@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Автотесты «Расходы»</title>
+<style>
+  body{font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;margin:12px;background:#fff;color:#111}
+  h1{font-size:18px;margin:0 0 8px}
+  #sum{font-weight:700;margin:6px 0 10px}
+  .ok{color:#13773f}.bad{color:#c62828}.skip{color:#8a6d00}
+  li{margin:3px 0}
+  small{color:#666}
+  #box{position:fixed;left:-10000px;top:0}
+  iframe{border:0;background:#fff}
+</style>
+</head>
+<body>
+<h1>Автотесты «Расходы»</h1>
+<div id="sum">Запуск…</div>
+<ol id="out"></ol>
+<div id="box"></div>
+<script>
+'use strict';
+// Каждый тест загружает приложение в iframe с чистым хранилищем и проверяет поведение через его глобальные функции.
+const out=document.getElementById('out'), box=document.getElementById('box');
+const RESULTS=[]; window.RESULTS=RESULTS;
+const DAY=864e5, pad=n=>String(n).padStart(2,'0');
+const ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const shift=n=>{const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+n);return d};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const txt=el=>(el?.textContent||'').replace(/[  ]/g,' ');
+let frame=null;
+
+async function app(w=375,h=812){
+  if(frame){frame.remove();frame=null;await sleep(50)}
+  localStorage.removeItem('rashody-state');
+  await new Promise(r=>{const q=indexedDB.deleteDatabase('rashody');q.onsuccess=q.onerror=q.onblocked=()=>r()});
+  frame=document.createElement('iframe');frame.style.width=w+'px';frame.style.height=h+'px';
+  frame.src='../rashody/index.html?test='+Date.now();box.appendChild(frame);
+  for(let i=0;i<100;i++){await sleep(50);try{if(frame.contentWindow.document.querySelector('#v-home')?.innerHTML.length)break}catch(e){}}
+  const W=frame.contentWindow, $=s=>W.document.querySelector(s);
+  // Защита приложения запрещает eval, поэтому выполняем код как встроенный <script> внутри iframe.
+  // Код с «;» — набор инструкций, без — выражение, значение которого возвращается.
+  const ev=code=>{
+    const body=code.includes(';')?code:`return (${code})`;
+    const el=W.document.createElement('script');
+    el.textContent=`try{window.__r=(()=>{${body}})();window.__e=null}catch(e){window.__e=e}`;
+    W.document.body.appendChild(el);el.remove();
+    if(W.__e)throw W.__e; return W.__r;
+  };
+  ev('closeSheet()');
+  return {W,ev,$,doc:W.document};
+}
+// Две выплаты: одна была 3 дня назад, следующая через 5 дней
+function baseState(ev,extra=''){
+  const a=shift(-3).getDate(), b=shift(5).getDate();
+  ev(`S.name='Тест';S.incomes=[{id:'i1',name:'Аванс',amount:40000,day:${a}},{id:'i2',name:'Зарплата',amount:60000,day:${b}}];
+      S.carryFrom='2999-01-01';${extra};render()`);
+  return {a,b};
+}
+function eq(a,b,msg){if(a!==b)throw new Error(`${msg}: ожидалось ${JSON.stringify(b)}, получилось ${JSON.stringify(a)}`)}
+function ok(c,msg){if(!c)throw new Error(msg)}
+function near(a,b,tol,msg){if(Math.abs(a-b)>tol)throw new Error(`${msg}: ожидалось ≈${b}, получилось ${a}`)}
+
+const tests=[
+['Платёж в день зарплаты виден в «Обязательные до зарплаты» и не уменьшает лимит до неё', async()=>{
+  const {ev,$}=await app(); const {b}=baseState(ev,`S.planned=[{id:'p1',name:'Кредит ВТБ',amount:9000,day:${shift(5).getDate()},cat:'loans'}]`);
+  const P=ev('period()'); eq(P.onPayday.length,1,'платёж в день зарплаты'); eq(P.reserve,0,'резерв до зарплаты');
+  ok(txt($('#v-home')).includes('Кредит ВТБ'),'платёж не показан на главной');
+  ok(txt($('#v-home')).includes('В день зарплаты'),'нет пометки «В день зарплаты»');
+}],
+['Платёж внутри периода резервируется, «Оплатил» снимает резерв и не меняет свободные деньги', async()=>{
+  const {ev,$}=await app(); baseState(ev,`S.planned=[{id:'p1',name:'Сплит',amount:3000,day:${shift(2).getDate()},cat:'installments'}]`);
+  const f0=ev('period().free'); eq(ev('period().reserve'),3000,'резерв');
+  $('[data-pay]').click(); eq(ev('period().reserve'),0,'резерв после оплаты'); eq(ev('period().free'),f0,'свободно не должно меняться');
+}],
+['Своя сумма копилки (ввод с клавиатуры) сохраняется и меняет лимит на главной', async()=>{
+  const {ev,$,W}=await app(); baseState(ev);
+  const before=ev('period().limit');
+  ev("go('settings')"); const inp=$('[data-bind="saveMonthly"]'); inp.focus(); inp.value='10000'; inp.dispatchEvent(new W.Event('input',{bubbles:true}));
+  eq(ev('S.saveMonthly'),10000,'S.saveMonthly'); await sleep(350);
+  ok(txt($('#saveAdvice')).includes('Твой план: 10 000'),'блок под полем не показал свою сумму');
+  const P=ev('period()'); ok(P.limit<before,'лимит не уменьшился'); near(P.limitFor(0)-P.limit,P.saveAmt/P.daysLeft,1,'разница лимитов');
+  ev("go('home')"); ok(txt($('.piggy')).includes('10 000'),'на главной нет суммы копилки');
+  ev("go('tips')"); ok(txt($('#v-tips')).includes('10 000'),'в советах не та сумма копилки');
+}],
+['Копилка: остаток + пополнения по своим дням', async()=>{
+  const {ev}=await app(); baseState(ev);
+  const day=shift(-10).getDate();
+  ev(`S.saveMonthly=6000;S.piggy={balance:5000,ts:${+shift(-40)},days:[${day}]}`);
+  // сколько раз «day» наступало после ts и до сегодня включительно
+  let n=0; for(let k=-40+1;k<=0;k++) if(shift(k).getDate()===day) n++;
+  const pg=ev('piggyNow()'); eq(pg.sum,5000+6000*n,'сумма в копилке'); ok(pg.next&&pg.nextAmt===6000,'следующее пополнение');
+  const P=ev('period()'); const expect=(()=>{let s=0;for(let k=-3;k<5;k++)if(shift(k).getDate()===day)s+=6000;return s})();
+  eq(P.saveAmt,expect,'в копилку за период');
+}],
+['Доп. доход: прибавляется к лимиту, виден на главной и в истории', async()=>{
+  const {ev,$}=await app(); baseState(ev);
+  const f0=ev('period().free');
+  ev("openSheet(null,'inc')"); $('#fAmount').value='3000'; $('#fDesc').value='Премия'; ev('saveForm()');
+  eq(ev('period().free'),f0+3000,'свободно после дохода'); eq(ev('period().extraSum'),3000,'extraSum');
+  ok(txt($('#v-home')).includes('доп. доходы'),'на главной не видно доп. дохода');
+  ev("go('history')"); ok(txt($('#v-history')).includes('Премия'),'нет в истории');
+}],
+['Неистраченное переносится на следующий период (и выключается настройкой)', async()=>{
+  const {ev}=await app(); baseState(ev);
+  const prevStart=ev('ymd(bounds(new Date(period().start-864e5)).start)');
+  ev(`S.carryFrom='${prevStart}';render()`);
+  ev(`S.expenses.push({id:'x1',amount:25000,desc:'Пятёрочка',cat:'food',date:'${prevStart}',ts:1})`);
+  const P=ev('period()'); const prevInc=ev('bounds(new Date(period().start-864e5)).income');
+  ok(P.carry>0,'перенос не посчитан'); eq(P.carry,prevInc-25000,'размер переноса');
+  ok(txt(document.querySelector('iframe').contentWindow.document.querySelector('#v-home')).includes('с прошлого периода'),'перенос не виден на главной');
+  ev('S.carry=false'); eq(ev('period().carry'),0,'перенос не выключился');
+}],
+['Новая трата: нет списка прошлых трат, категории свёрнуты', async()=>{
+  const {ev,$}=await app(); baseState(ev,`S.expenses=[{id:'e1',amount:200,desc:'Кофе',cat:'cafe',date:'${ymd(shift(-1))}',ts:1}]`);
+  ev('openSheet()'); ok(!$('#recent'),'остался блок прошлых трат'); ok($('#fCats').hidden,'категории не свёрнуты');
+}],
+['Категория угадывается, ручной выбор отменяется повторным нажатием и кнопкой «вернуть авто»', async()=>{
+  const {ev,$,W}=await app(); baseState(ev);
+  ev('openSheet()'); const d=$('#fDesc'); d.value='булочка'; d.dispatchEvent(new W.Event('input',{bubbles:true}));
+  eq(ev('ui.fCat'),'cafe','угадывание'); $('#catToggle').click(); ok(!$('#fCats').hidden,'категории не раскрылись');
+  $('[data-fcat="food"]').click(); eq(ev('ui.fCat'),'food','ручной выбор'); eq(ev('ui.fManual'),true,'ручной режим');
+  $('[data-fcat="food"]').click(); eq(ev('ui.fCat'),'cafe','повторное нажатие не вернуло авто'); eq(ev('ui.fManual'),false,'остался ручной режим');
+  $('[data-fcat="health"]').click(); $('[data-act="autocat"]').click(); eq(ev('ui.fCat'),'cafe','«вернуть авто» не сработало');
+}],
+['Пока печатаешь, фокус не уходит из поля (клавиатура не закрывается)', async()=>{
+  const {ev,$,W}=await app(); baseState(ev);
+  ev('openSheet()'); const d=$('#fDesc'); d.focus();
+  for(const t of ['б','бу','бул','булоч','булочка','булочка с маком']){d.value=t;d.dispatchEvent(new W.Event('input',{bubbles:true}));ev("haptic()")}
+  eq(W.document.activeElement,d,'фокус ушёл из поля описания');
+}],
+['Настройки: резервная копия внизу, демо-данных нет', async()=>{
+  const {ev,$}=await app(); baseState(ev); ev("go('settings')");
+  const cards=[...$('#v-settings').querySelectorAll('.card')]; ok(txt(cards.at(-1)).includes('Резервная копия'),'копия не последняя');
+  ok(!$('[data-act="demo"]')&&!$('[data-act="undemo"]'),'остались кнопки демо');
+  ev("go('home')"); ok(!$('[data-act="demo"]'),'кнопка демо на главной');
+}],
+['Обязательные платежи: добавление через пустую форму, изменение, удаление', async()=>{
+  const {ev,$,W}=await app(); baseState(ev); ev("go('settings')");
+  $('#pName').value='Ипотека Сбер'; $('#pName').dispatchEvent(new W.Event('input',{bubbles:true})); eq($('#pCat').value,'mortgage','категория по названию');
+  $('#pAmount').value='32000'; $('#pDay').value='7'; $('[data-act="planSave"]').click();
+  eq(ev('S.planned.length'),1,'платёж не добавлен'); eq($('#pName').value,'','форма не очистилась');
+  $('[data-pedit]').click(); eq($('#pName').value,'Ипотека Сбер','редактирование не заполнило форму');
+  $('#pAmount').value='33000'; $('[data-act="planSave"]').click(); eq(ev('S.planned[0].amount'),33000,'изменение');
+  W.confirm=()=>true; $('[data-pdel]').click(); eq(ev('S.planned.length'),0,'удаление');
+}],
+['Долги: дал/вернули меняют свободные деньги', async()=>{
+  const {ev,$}=await app(); baseState(ev); const f0=ev('period().free');
+  ev("openDebt(null,'out')"); $('#dAmount').value='2000'; $('#dWho').value='Петя'; ev('saveDebt()');
+  eq(ev('period().free'),f0-2000,'после «дал в долг»');
+  ev('debtReturn(S.debts[0],500,null)'); eq(ev('period().free'),f0-1500,'после возврата 500');
+}],
+['Шапка не уезжает при прокрутке', async()=>{
+  const {ev,$,W}=await app(375,700); baseState(ev);
+  ev(`for(let i=0;i<40;i++)S.expenses.push({id:'z'+i,amount:100+i,desc:'Кофе '+i,cat:'cafe',date:'${ymd(shift(-1))}',ts:i});render()`);
+  ev("go('history')"); W.scrollTo(0,1500); await sleep(100);
+  ok(W.scrollY>500,'страница не прокрутилась'); near(Math.round($('header').getBoundingClientRect().top),0,1,'шапка уехала');
+}],
+['Поворот: на телефоне в горизонтали — заглушка, в вертикали — нет', async()=>{
+  const phone=Math.min(screen.width,screen.height)<=500&&(navigator.maxTouchPoints>0||'ontouchstart' in window);
+  if(!phone)return 'skip: тест надо запускать в режиме телефона (сенсорный экран)';
+  let a=await app(740,360); ok(a.doc.documentElement.classList.contains('landscape-phone'),'нет класса в горизонтали');
+  eq(a.W.getComputedStyle(a.$('.rotate')).display,'grid','заглушка не показана');
+  a=await app(360,740); eq(a.W.getComputedStyle(a.$('.rotate')).display,'none','заглушка в вертикали');
+}],
+['Автокатегории: 150+ фраз', async()=>{
+  const {ev}=await app();
+  const T={food:['молоко','хлеб бородинский','пятерочка','яйца','куриное филе','гречка','бананы','сыр','вода питьевая','кофе в зернах','морепродукты','масло','огурцы и помидоры'],
+  cafe:['булочка','бутерброд','сэндвич','сендвич','круассан','кофе','капучино','шаурма','бизнес ланч','пицца','суши','обед в столовой','пончик','чай','мороженое','чипсы','бургер кинг','вкусно и точка','бутер'],
+  transport:['метро','такси','яндекс го','электричка','каршеринг','самокат аренда','тройка'],
+  auto:['бензин','аи-95','заправка лукойл','замена масла','шиномонтаж','мойка','парковка','штраф гибдд','антифриз','запчасти'],
+  health:['капли в нос','нурофен','аптека','витамины','стоматолог','анализы','мирамистин','капли для глаз','спрей для носа','парацетамол','прием врача','линзы'],
+  beauty:['стрижка','шампунь','зубная паста','маникюр','дезодорант','барбер','крем для рук'],
+  household:['туалетная бумага','средство для посуды','лампочка','икеа','порошок','сковородка','губки','мешки для мусора'],
+  clothes:['кроссовки','футболка','джинсы','куртка','носки','zara'],
+  tech:['наушники','зарядка','чехол для телефона','айфон','пылесос','dns'],
+  shop:['ozon','wildberries','вб','заказ с озона'],
+  alco:['пиво','вино','сигареты','вейп','красное и белое'],
+  fun:['кино','концерт','боулинг','steam','книга','квест'],
+  sport:['спортзал','протеин','бассейн','йога'],
+  kids:['подгузники','игрушка','детский сад'],
+  pets:['корм коту','наполнитель','ветеринар'],
+  gifts:['подарок маме','цветы','букет роз','день рождения'],
+  travel:['отель','авиабилеты','ржд','билет на самолет'],
+  transfers:['перевод другу','вернул долг'],
+  rent:['аренда квартиры','за квартиру'], mortgage:['ипотека'],
+  loans:['кредит','платеж по кредиту','кредитка','микрозайм'],
+  installments:['яндекс сплит','долями','сплит','рассрочка','плати частями','карта халва'],
+  utilities:['жкх','коммуналка','за свет','газ','капремонт','за воду'],
+  comm:['мтс','билайн','интернет','телефон'], subs:['яндекс плюс','кинопоиск','chatgpt','vpn','icloud','подписка'],
+  insurance:['осаго','страховка']};
+  const bad=[];let n=0;
+  for(const [c,l] of Object.entries(T))for(const w of l){n++;const g=ev(`dictGuess(norm(${JSON.stringify(w)}))`);if(g!==c)bad.push(`${w} → ${g} (ждал ${c})`)}
+  if(bad.length)throw new Error(`${bad.length} из ${n}: `+bad.join('; '));
+  return `${n} фраз`;
+}],
+];
+
+(async()=>{
+  let pass=0,fail=0,skip=0;
+  for(const [name,fn] of tests){
+    const li=document.createElement('li');out.appendChild(li);
+    try{const r=await fn();
+      if(typeof r==='string'&&r.startsWith('skip')){skip++;li.className='skip';li.innerHTML=`⏭ ${name} <small>${r}</small>`;RESULTS.push({name,status:'skip',info:r})}
+      else{pass++;li.className='ok';li.innerHTML=`✅ ${name}${r?` <small>${r}</small>`:''}`;RESULTS.push({name,status:'ok'})}}
+    catch(e){fail++;li.className='bad';li.innerHTML=`❌ ${name}<br><small>${String(e.message||e).replace(/</g,'&lt;')}</small>`;RESULTS.push({name,status:'fail',error:String(e.message||e)})}
+  }
+  if(frame)frame.remove();
+  localStorage.removeItem('rashody-state');indexedDB.deleteDatabase('rashody');
+  document.getElementById('sum').textContent=`Готово: ✅ ${pass}  ❌ ${fail}  ⏭ ${skip}`;
+  window.DONE=true;
+})();
+</script>
+</body>
+</html>

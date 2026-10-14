@@ -89,8 +89,9 @@ header.scrolled{border-bottom-color:var(--ring);box-shadow:0 6px 20px rgba(120,6
 @keyframes bobh{50%{transform:translateY(4px)}}
 /* заглушка для горизонтального положения телефона */
 .rotate{display:none}
-@media (orientation:landscape) and (max-height:500px) and (hover:none){
-  .rotate{display:grid;position:fixed;inset:0;z-index:100;place-items:center;text-align:center;background:var(--bg);color:var(--ink2);font-size:17px;padding:24px}
+html.landscape-phone .rotate{display:grid!important}
+@media all{
+  .rotate:not([hidden]){position:fixed;inset:0;z-index:100;place-items:center;text-align:center;background:var(--bg);color:var(--ink2);font-size:17px;padding:24px}
   .rotate .big{font-size:52px;display:block;margin-bottom:10px;animation:turn 2s ease-in-out infinite}
 }
 @keyframes turn{0%,20%{transform:rotate(90deg)}60%,100%{transform:rotate(0)}}
@@ -376,12 +377,12 @@ nav.tabs .in{display:grid;grid-template-columns:1fr 1fr 72px 1fr 1fr;align-items
   <div class="grab"></div>
   <div class="sheet-h"><h3 id="sTitle">Новая трата</h3><button class="btn sm" data-close>Закрыть</button></div>
   <div class="seg" id="fType"><button data-type="exp" class="on">Расход</button><button data-type="inc">Доход</button></div>
-  <div class="recent" id="recent"></div>
   <div class="amount-wrap"><input class="amount-in num" id="fAmount" inputmode="decimal" placeholder="0" autocomplete="off"><span>₽</span></div>
   <div class="hint">Можно складывать: 250+180</div>
   <input class="inp" id="fDesc" placeholder="На что? Булочка, такси, капли в нос…" autocomplete="off" enterkeyhint="done">
   <div class="guess" id="fGuess"></div>
-  <div class="chips" id="fCats"></div>
+  <button class="btn ghost" id="catToggle" style="margin-top:2px">Выбрать категорию вручную ▾</button>
+  <div class="chips" id="fCats" hidden></div>
   <div class="row2" style="margin-bottom:14px">
     <input class="inp" id="fDate" type="date">
     <button class="btn" id="fToday">Сегодня</button>
@@ -485,6 +486,9 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');
 function haptic(kind='light'){
   try{
     if(navigator.vibrate){navigator.vibrate(kind==='success'?[10,50,16]:kind==='warn'?[20,40,20]:8);return}
+    // клик по скрытому переключателю уводит фокус — при открытой клавиатуре это закрыло бы её
+    const ae=document.activeElement;
+    if(ae&&(ae.tagName==='TEXTAREA'||ae.tagName==='SELECT'||(ae.tagName==='INPUT'&&ae.type!=='checkbox')))return;
     const l=$('#hapticL'); l.click(); if(kind!=='light')setTimeout(()=>l.click(),110);
   }catch(e){}
 }
@@ -649,37 +653,80 @@ function saveAdvice(){
 }
 
 /* ---------- период до зарплаты ---------- */
-function period(now=new Date()){
+// Границы периода между выплатами, в который попадает дата t
+function bounds(t){
   const inc=S.incomes.filter(i=>i.amount>0&&i.day>=1&&i.day<=31); if(!inc.length)return null;
-  const t=sod(now), T=ymd(t), pts=[];
+  const pts=[];
   for(const i of inc)for(const d of occurrences(i.day,t))pts.push({d,i});
   pts.sort((a,b)=>a.d-b.d);
   let start=null,next=null; for(const p of pts){if(p.d<=t)start=p.d;else if(!next)next=p.d}
+  return {start,next,
+    income:pts.filter(p=>+p.d===+start).reduce((s,p)=>s+p.i.amount,0),
+    startNames:pts.filter(p=>+p.d===+start).map(p=>p.i.name||'Доход'),
+    nextNames:pts.filter(p=>+p.d===+next).map(p=>p.i.name||'Доход')};
+}
+// Сколько уходит в копилку за период: по своим дням или вместе с выплатами (пропорционально)
+function piggyDays(){
+  const m=+S.saveMonthly||0, days=S.piggy?.days||[];
+  if(!m)return [];
+  if(days.length)return days.map(d=>({d,amt:m/days.length}));
+  const mi=monthlyIncome();
+  return S.incomes.filter(i=>i.amount>0&&i.day>=1).map(i=>({d:i.day,amt:m*i.amount/mi}));
+}
+function saveForPeriod(start,next){
+  let s=0;
+  for(const e of piggyDays())for(const d of occurrences(e.d,start,-1,1))if(d>=start&&d<next)s+=e.amt;
+  return Math.round(s);
+}
+// Сколько сейчас в копилке: введённый остаток + пополнения по расписанию после этого
+function piggyNow(){
+  const pg=S.piggy||{}, t=sod(new Date()), from=pg.ts?sod(new Date(pg.ts)):null;
+  let add=0, next=null, nextAmt=0;
+  for(const e of piggyDays()){
+    if(from)for(let k=0;k<=(t.getFullYear()-from.getFullYear())*12+t.getMonth()-from.getMonth();k++){
+      const d=dateOnDay(from.getFullYear(),from.getMonth()+k,e.d); if(d>from&&d<=t)add+=e.amt}
+    const n=occurrences(e.d,t,0,1).find(d=>d>t);
+    if(n&&(!next||+n<+next)){next=n;nextAmt=e.amt}else if(n&&+n===+next)nextAmt+=e.amt;
+  }
+  return {sum:Math.round((+pg.balance||0)+add),next,nextAmt:Math.round(nextAmt),known:!!pg.ts};
+}
+function period(now=new Date(),depth=0){
+  const t=sod(now), T=ymd(t), b=bounds(t); if(!b)return null;
+  const {start,next,income,startNames,nextNames}=b;
   const S0=ymd(start), N0=ymd(next);
-  const income=pts.filter(p=>+p.d===+start).reduce((s,p)=>s+p.i.amount,0);
-  const startNames=pts.filter(p=>+p.d===+start).map(p=>p.i.name||'Доход');
-  const nextNames=pts.filter(p=>+p.d===+next).map(p=>p.i.name||'Доход');
   const inP=ds=>ds>=S0&&ds<N0&&ds<=T;
   const exps=S.expenses.filter(x=>inP(x.date));
   const extra=S.extra.filter(x=>inP(x.date));
-  const due=[];
+  const due=[], onPayday=[];
   for(const p of S.planned){ if(!(p.amount>0)||!(p.day>=1))continue;
     const li=loanInfo(p); if(li&&li.done)continue; // кредит закрыт — больше не резервируем
-    for(const d of occurrences(p.day,start,-1,1))if(d>=start&&d<next)due.push({p,d,paid:linkedPayment(p,d)}); }
+    for(const d of occurrences(p.day,start,-1,1)){
+      if(d>=start&&d<next)due.push({p,d,paid:linkedPayment(p,d)});
+      // платёж в день следующей выплаты показываем, но платится он уже из новых денег
+      else if(+d===+next)onPayday.push({p,d,paid:linkedPayment(p,d)});
+    } }
   due.sort((a,b)=>a.d-b.d);
   const owe=openDebts('in').filter(d=>d.due&&d.due<N0).map(d=>({d,left:debtLeft(d)}));
   const oweSum=owe.reduce((s,x)=>s+x.left,0);
-  const mi=monthlyIncome();
-  // копилка делится между выплатами пропорционально их размеру
-  const saveAmt=mi?Math.round((+S.saveMonthly||0)*income/mi):0;
+  const saveAmt=saveForPeriod(start,next);
   const spent=sum(exps), extraSum=sum(extra);
   const reserve=due.filter(x=>!x.paid).reduce((s,x)=>s+x.p.amount,0);
-  const free=income+extraSum-saveAmt-spent-reserve-oweSum;
+  // неистраченное в прошлом периоде переходит в этот (если включено и прошлый период целиком учтён в приложении)
+  let carry=0;
+  if(S.carry!==false&&depth<12){
+    const pe=new Date(start-DAY), pb=bounds(pe);
+    if(pb&&ymd(pb.start)>=(S.carryFrom||'9999')){
+      const pp=period(pe,depth+1);
+      // неоплаченные обязательные и долги не вычитаем второй раз: они учтутся, когда их оплатят
+      carry=Math.max(0,Math.round(pp.free+pp.reserve+pp.oweSum));
+    }
+  }
+  const free=income+carry+extraSum-saveAmt-spent-reserve-oweSum;
   const daysLeft=Math.max(1,Math.round((next-t)/DAY));
   const spentToday=sum(exps.filter(x=>x.date===T&&!x.plannedId&&!x.debtId));
   const limit=(free+spentToday)/daysLeft;
   const limitFor=save=>(free+saveAmt-save+spentToday)/daysLeft; // лимит при другой сумме копилки за эту выплату
-  return {start,next,income,startNames,nextNames,exps,extraSum,due,owe,oweSum,spent,saveAmt,reserve,free,daysLeft,spentToday,limit,limitFor,todayLeft:limit-spentToday};
+  return {start,next,income,startNames,nextNames,exps,extra,extraSum,carry,due,onPayday,owe,oweSum,spent,saveAmt,reserve,free,daysLeft,spentToday,limit,limitFor,todayLeft:limit-spentToday};
 }
 function autoLink(e){ // привязать трату к обязательному платежу той же категории
   if(e.plannedId||e.debtId||!isFixed(e.cat))return;
@@ -719,9 +766,19 @@ function insights(k){
     if(splits>=3)out.push({t:'warn',i:'🧾',x:`У тебя ${splits} ${plural(splits,['рассрочка','рассрочки','рассрочек'])}. Мелкие «сплиты» легко копятся и незаметно съедают зарплату.`});
     for(const p of S.planned){const li=loanInfo(p);if(li&&!li.done&&li.n<=2)
       out.push({t:'good',i:'🎉',x:`${esc(p.name||cat(p.cat).name)}: ${li.n===1?'остался последний платёж':'осталось всего 2 платежа'}! Потом в месяц освободится ${money(p.amount)}.`});}
-    const A=saveAdvice();
-    if(!(+S.saveMonthly>0)&&A&&A.rec>0)out.push({t:'info',i:'🐷',x:`По твоим тратам можно спокойно откладывать <b>~${money(A.rec)} в месяц</b>. Включи копилку в настройках ⚙️ — сразу учту её в дневном лимите.`});
-    else if(+S.saveMonthly>0&&A&&A.varM!=null&&A.free<S.saveMonthly)out.push({t:'warn',i:'🐷',x:`Копилка ${money(S.saveMonthly)}/мес больше, чем реально остаётся (~${money(Math.max(0,A.free))}). Возможно, стоит уменьшить её до ~${money(A.rec)}.`});
+    const A=saveAdvice(), m=+S.saveMonthly||0, pg=piggyNow();
+    if(!m&&A&&A.rec>0)out.push({t:'info',i:'🐷',x:`По твоим тратам можно спокойно откладывать <b>~${money(A.rec)} в месяц</b>. Включи копилку в настройках ⚙️ — сразу учту её в дневном лимите.`});
+    else if(m&&A&&A.varM!=null&&A.free<m)out.push({t:'warn',i:'🐷',x:`Копилка ${money(m)}/мес больше, чем реально остаётся (~${money(Math.max(0,A.free))}). Лучше уменьшить до ~${money(A.rec)}, иначе к концу месяца придётся брать из неё.`});
+    else if(m)out.push({t:'good',i:'🐷',x:`Откладываешь <b>${money(m)} в месяц</b>${pg.known?`, в копилке ~${money(pg.sum)}`:''}. За год соберётся ~${money(m*12+(pg.known?pg.sum:0))}.${A&&A.varM!=null&&A.rec>m?` По тратам можно и ${money(A.rec)}.`:''}`});
+    // досрочное погашение: свободные деньги после копилки — в самый маленький долг («снежный ком»)
+    const loans=S.planned.map(p=>({p,li:loanInfo(p)})).filter(x=>x.li&&!x.li.done&&x.li.n>1&&DEBT_CATS.has(x.p.cat)).sort((a,b)=>a.li.left-b.li.left);
+    const spare=A&&A.varM!=null?A.free-m:0;
+    if(loans.length&&spare>=1000){
+      const x=loans[0], extra=Math.min(r500(spare*.5),Math.max(500,r500(x.li.left-x.p.amount)));
+      const n2=Math.ceil(x.li.left/(x.p.amount+extra)), saved=x.li.n-n2;
+      if(extra>0&&saved>0)out.push({t:'info',i:'🚀',x:`<b>Быстрее закрыть «${esc(x.p.name||cat(x.p.cat).name)}»:</b> вноси на <b>${money(extra)}</b> больше — ${money(x.p.amount+extra)} вместо ${money(x.p.amount)}. Закроешь за ${n2} ${plural(n2,['месяц','месяца','месяцев'])} вместо ${x.li.n} — на ${saved} ${plural(saved,['месяц','месяца','месяцев'])} раньше. Начинай с самого маленького долга, а если знаешь ставки — с самой дорогой. В банке попроси направить досрочку в уменьшение срока.`});
+    }else if(S.planned.some(p=>DEBT_CATS.has(p.cat)&&p.amount>0&&!(p.total>0)))
+      out.push({t:'info',i:'🚀',x:'Укажи во вкладке «Долги», сколько всего осталось по кредитам — подскажу, сколько докладывать сверху, чтобы закрыть их быстрее.'});
   }
   if(!exps.length){
     out.push({t:'info',i:'✍️',x:'Пока нет трат за этот месяц. Нажми <b>+</b>, впиши сумму и на что потратил — категорию подберу сам.'});
@@ -745,14 +802,18 @@ function insights(k){
     const prevVar=sum(prevCmp.filter(e=>!isFixed(e.cat)));
     if(prevVar>0&&varTotal/prevVar-1<=-.1)out.push({t:'good',i:'👍',x:`На повседневное тратишь на <b>${Math.round((1-varTotal/prevVar)*100)}% меньше</b>, чем${per} в ${M_PREP[mIdx(prevK)]}. Так держать!`});
   }
+  // одна и та же покупка много раз
+  const byDesc={};for(const e of varExps){const n=norm(e.desc);if(!n)continue;const r=byDesc[n]||(byDesc[n]={n:e.desc,c:0,s:0});r.c++;r.s+=e.amount}
+  const rep=Object.values(byDesc).filter(x=>x.c>=4).sort((a,b)=>b.s-a.s)[0];
+  if(rep)out.push({t:'info',i:'🔂',x:`«${esc(rep.n)}» — ${rep.c} ${plural(rep.c,['раз','раза','раз'])} в этом месяце, всего <b>${money(rep.s)}</b>. Если брать вдвое реже, за год сэкономишь ~${money(rep.s/2/d*365)}.`});
   const small=varExps.filter(e=>e.amount<=500);
   if(small.length>=10){const s=sum(small);
     out.push({t:'info',i:'☕',x:`${small.length} ${plural(small.length,['мелкая покупка','мелкие покупки','мелких покупок'])} до 500 ₽ на <b>${money(s)}</b>. Мелочи складываются: за год это ~${money(s/d*365)}.`});}
   const cafe=sum(exps.filter(e=>e.cat==='cafe')), food=sum(exps.filter(e=>e.cat==='food'));
   if(cafe>3000&&food>0&&cafe>food*.8)out.push({t:'info',i:'🥐',x:`На кафе и перекусы (${money(cafe)}) уходит почти как на продукты (${money(food)}). Еда из дома в 3–4 раза дешевле.`});
   const top=Object.entries(groupBy(varExps)).sort((a,b)=>b[1]-a[1])[0];
-  if(top&&varTotal>0&&top[1]/varTotal>=.35&&varExps.length>=5)
-    out.push({t:'info',i:'🔎',x:`${pct(top[1],varTotal)}% повседневных трат — ${cat(top[0]).emoji} <b>${esc(cat(top[0]).name)}</b>. Если хочешь сэкономить, начни отсюда.`});
+  if(top&&varTotal>0&&top[1]/varTotal>=.3&&varExps.length>=5)
+    out.push({t:'info',i:'🔎',x:`${pct(top[1],varTotal)}% повседневных трат — ${cat(top[0]).emoji} <b>${esc(cat(top[0]).name)}</b>${cur&&d>=5&&d<N?`; при таком темпе к концу месяца на неё уйдёт ~${money(top[1]/d*N)}`:''}. Если сократить на 20%, освободится ~${money(top[1]/d*30.4*.2)} в месяц.`});
   const subs=exps.filter(e=>e.cat==='subs');
   if(subs.length>=3)out.push({t:'info',i:'🔁',x:`На подписки ушло <b>${money(sum(subs))}</b> (${subs.length} ${plural(subs.length,['платёж','платежа','платежей'])}). Проверь, всеми ли пользуешься.`});
   const byDay={};for(const e of varExps)byDay[e.date]=(byDay[e.date]||0)+e.amount;
@@ -812,13 +873,14 @@ function payCard(){
     <p class="sec" style="margin:0 0 12px;font-size:15px">Укажи аванс и зарплату, а ещё обязательные платежи — буду каждый день считать, сколько можно потратить до следующей выплаты.</p>
     <button class="btn primary block" data-goto="settings">Указать зарплату</button></div>`;
   const neg=P.free<0, over=P.todayLeft<0;
-  const used=P.income+P.extraSum>0?(P.spent+P.reserve+P.saveAmt+P.oweSum)/(P.income+P.extraSum):1;
+  const inAll=P.income+P.extraSum+P.carry, used=inAll>0?(P.spent+P.reserve+P.saveAmt+P.oweSum)/inAll:1;
   const periodDays=Math.round((P.next-P.start)/DAY), passed=periodDays-P.daysLeft+1;
   // мелкая строчка про копилку и пересчёт лимита
   let piggy='';
   const mi=monthlyIncome();
-  if(P.saveAmt>0){
-    piggy=`<button class="piggy" data-goto="settings"><span>🐷</span><span>Откладываешь <u>${money(S.saveMonthly)}</u> в месяц (${money(P.saveAmt)} с этой выплаты). Без копилки лимит был бы <u>${money(Math.max(0,P.limitFor(0)))}</u>/день — сейчас <u>${money(Math.max(0,P.limit))}</u>/день.</span></button>`;
+  if(+S.saveMonthly>0){
+    const pg=piggyNow();
+    piggy=`<button class="piggy" data-goto="settings"><span>🐷</span><span>${pg.known?`В копилке ~<u>${money(pg.sum)}</u>. `:''}Откладываешь <u>${money(S.saveMonthly)}</u> в месяц${P.saveAmt?` (${money(P.saveAmt)} до ${fmtD(P.next)})`:''}. Без копилки лимит был бы <u>${money(Math.max(0,P.limitFor(0)))}</u>/день — сейчас <u>${money(Math.max(0,P.limit))}</u>/день.</span></button>`;
   }else{
     const A=saveAdvice();
     if(A&&A.rec>0&&mi){const per=Math.round(A.rec*P.income/mi);
@@ -830,10 +892,12 @@ function payCard(){
     <div class="delta">${neg?'с учётом обязательных платежей':`лимит на день <b>${money(Math.max(0,P.limit))}</b>`} · ещё ${days(P.daysLeft)} до ${fmtD(P.next)} (${esc(P.nextNames.join(' + ').toLowerCase())})</div>
     <div class="progress" role="img" aria-label="Использовано ${Math.round(used*100)}% денег периода"><i style="width:${Math.min(100,Math.max(0,used*100))}%"></i></div>
     <div class="budget-row"><span>свободно до зарплаты <b>${money(Math.max(0,P.free))}</b></span><span>день ${passed} из ${periodDays}</span></div>
+    ${P.extraSum||P.carry?`<div class="budget-row" style="margin-top:4px">${P.extraSum?`<span>💰 доп. доходы <b>+${money(P.extraSum)}</b></span>`:''}${P.carry?`<span>↪ с прошлого периода <b>+${money(P.carry)}</b></span>`:''}</div>`:''}
     ${piggy}
     <details class="calc"><summary>Как считается ▾</summary><table>
       <tr><td>${esc(P.startNames.join(' + '))} ${fmtD(P.start)}</td><td>+${money(P.income)}</td></tr>
-      ${P.extraSum?`<tr><td>Доп. доходы</td><td>+${money(P.extraSum)}</td></tr>`:''}
+      ${P.carry?`<tr><td>Остаток с прошлого периода</td><td>+${money(P.carry)}</td></tr>`:''}
+      ${P.extra.map(x=>`<tr><td>💰 ${esc(x.desc||'Доп. доход')}, ${fmtDs(x.date)}</td><td>+${money(x.amount)}</td></tr>`).join('')}
       ${P.saveAmt?`<tr><td>В копилку</td><td>−${money(P.saveAmt)}</td></tr>`:''}
       ${P.reserve?`<tr><td>Ещё не оплачены обязательные</td><td>−${money(P.reserve)}</td></tr>`:''}
       ${P.oweSum?`<tr><td>Вернуть долги до зарплаты</td><td>−${money(P.oweSum)}</td></tr>`:''}
@@ -844,11 +908,16 @@ function payCard(){
   </div>`;
 }
 function plannedCard(){
-  const P=period(); if(!P||!P.due.length)return '';
+  const P=period(); if(!P||(!P.due.length&&!P.onPayday.length))return '';
   const t=sod(new Date());
   const all=P.due.reduce((s,x)=>s+(x.paid?x.paid.amount:x.p.amount),0);
   const paidSum=P.due.filter(x=>x.paid).reduce((s,x)=>s+x.paid.amount,0);
   const nPaid=P.due.filter(x=>x.paid).length;
+  if(!P.due.length)return `<div class="card"><h2>📌 Обязательные до зарплаты</h2><div class="small sec">До ${fmtD(P.next)} обязательных платежей нет 🎉</div>
+    <div class="grp" style="margin-top:12px">В день зарплаты · ${fmtD(P.next)} · из новых денег</div>${P.onPayday.map(({p,d,paid})=>`
+      <div class="prow${paid?' paid':''}"><span class="em">${cat(p.cat).emoji}</span>
+      <span class="tx"><div class="d1">${esc(p.name||cat(p.cat).name)}</div><div class="d2">${fmtD(d)}</div></span>
+      <span class="am num">${money(paid?paid.amount:p.amount)}<br>${paid?'<span class="ok">✓ оплачено</span>':`<button class="pay-btn" data-pay="${p.id}" data-due="${ymd(d)}">Оплатил</button>`}</span></div>`).join('')}</div>`;
   return `<div class="card"><h2>📌 Обязательные до зарплаты</h2>
     <div class="ptotal"><span>Всего <b>${money(all)}</b></span><span>${P.reserve?`к оплате <b>${money(P.reserve)}</b> · ${nPaid}/${P.due.length}`:'<span class="ok">✓ всё оплачено</span>'}</span></div>
     ${P.due.map(({p,d,paid},i)=>{
@@ -857,7 +926,12 @@ function plannedCard(){
       <span class="tx"><div class="d1">${esc(p.name||cat(p.cat).name)}</div>
       <div class="d2${!paid&&d<t?' late':''}">${fmtD(d)}${!paid&&d<t?' · срок прошёл':''}${li?` · осталось ${money(li.left)}`:''}</div></span>
       <span class="am num">${money(paid?paid.amount:p.amount)}<br>${paid?'<span class="ok">✓ оплачено</span>':`<button class="pay-btn" data-pay="${p.id}" data-due="${ymd(d)}">Оплатил</button>`}</span>
-    </div>`}).join('')}</div>`;
+    </div>`}).join('')}
+    ${P.onPayday.length?`<div class="grp" style="margin-top:12px">В день зарплаты · ${fmtD(P.next)} · из новых денег</div>${P.onPayday.map(({p,d,paid})=>`
+      <div class="prow${paid?' paid':''}"><span class="em">${cat(p.cat).emoji}</span>
+      <span class="tx"><div class="d1">${esc(p.name||cat(p.cat).name)}</div><div class="d2">${fmtD(d)} · в лимит до зарплаты не входит</div></span>
+      <span class="am num">${money(paid?paid.amount:p.amount)}<br>${paid?'<span class="ok">✓ оплачено</span>':`<button class="pay-btn" data-pay="${p.id}" data-due="${ymd(d)}">Оплатил</button>`}</span></div>`).join('')}`:''}
+    </div>`;
 }
 function debtsMiniCard(){
   const soon=S.debts.filter(d=>debtLeft(d)>0&&d.due&&daysUntil(d.due)<=7);
@@ -903,6 +977,7 @@ function renderHome(){
       <div class="total num" style="font-size:30px" id="monthNum">${money(total)}</div>
       <div class="delta">${delta||'&nbsp;'}</div>
       ${total?`<div class="split"><span>повседневные <b>${money(varT)}</b></span><span>обязательные <b>${money(fixedT)}</b></span></div>`:''}
+      ${(()=>{const ex=sum(S.extra.filter(e=>e.date.startsWith(k)&&!e.debtId));return ex?`<div class="split"><span>💰 доп. доходы <b>+${money(ex)}</b></span></div>`:''})()}
       ${budget}
     </div>
     ${by.length?`<div class="card"><h2>По категориям</h2><div class="cats">
@@ -910,7 +985,7 @@ function renderHome(){
       ${byFix.length?`<div class="grp">Обязательные</div>${catRows(byFix,total,max)}`:''}
     </div></div>`:''}
     ${varT>0?`<div class="card"><h2>По дням <span class="small muted" style="font-weight:400">повседневные</span></h2><div class="chart-tip" id="ctip"></div>${dailyChart(k)}</div>`:''}
-    ${!S.expenses.length?`<div class="card"><div class="empty"><div class="big">🌞</div>Здесь пока пусто.<br>Добавь первую трату кнопкой <b>+</b><br>или загрузи демо-данные, чтобы посмотреть, как всё работает.<br><br><button class="btn primary" data-act="demo">Загрузить демо</button></div></div>`:''}
+    ${!S.expenses.length?`<div class="card"><div class="empty"><div class="big">🌞</div>Здесь пока пусто.<br>Добавь первую трату кнопкой <b>+</b> внизу —<br>впиши сумму и на что потратил.</div></div>`:''}
   `;
   if(P)countUp($('#heroNum'),'hero',P.free<0?-P.free:Math.abs(P.todayLeft));
   countUp($('#monthNum'),'month'+k,total);
@@ -1020,6 +1095,13 @@ function renderDebts(){
     </div>`;
 }
 
+function piggyLine(){
+  const m=+S.saveMonthly||0; if(!m)return '';
+  const pg=piggyNow(), P=period(), per=P?P.saveAmt:0;
+  return `<div class="advice" style="border-style:solid">🐷 <b>Твой план: ${money(m)} в месяц</b>${pg.known?` · в копилке сейчас ~<b>${money(pg.sum)}</b>`:''}
+    ${pg.next?`<div class="small sec" style="margin-top:4px">Следующее пополнение: ${fmtD(pg.next)} — ${money(pg.nextAmt)}</div>`:''}
+    ${P?`<div class="small sec" style="margin-top:4px">До ${fmtD(P.next)} откладываешь ${money(per)}: лимит <b>${money(Math.max(0,P.limit))}</b>/день (без копилки было бы ${money(Math.max(0,P.limitFor(0)))}).</div>`:''}</div>`;
+}
 function saveAdviceHtml(){
   const A=saveAdvice();
   if(!A)return '<div class="advice">Сначала укажи аванс и зарплату выше — тогда подскажу, сколько реально можно откладывать.</div>';
@@ -1033,6 +1115,8 @@ function saveAdviceHtml(){
       <tr class="tot"><td>Остаётся</td><td>${money(A.free)}</td></tr></table>
       ${A.rec>0?`Советую откладывать <b>~${money(A.rec)}</b> в месяц — это 70% остатка, ещё 30% останется запасом на неожиданное.`
       :'Сейчас траты съедают весь доход. Начни хотя бы с 1 000–2 000 ₽ и посмотри во вкладке «Советы», где можно сократить.'}`}
+    ${+S.saveMonthly>0&&A.varM!=null?(S.saveMonthly>A.free?`<div style="margin-top:8px;color:var(--bad)">⚠️ ${money(S.saveMonthly)} больше, чем реально остаётся (~${money(Math.max(0,A.free))}). Скорее всего, к концу месяца придётся брать из копилки.</div>`
+      :`<div style="margin-top:8px;color:var(--good-ink)">✓ ${money(S.saveMonthly)} — посильно: после копилки остаётся запас ~${money(A.free-S.saveMonthly)} в месяц.</div>`):''}
     <div class="picks">${picks.map(v=>`<button class="chip${v===+S.saveMonthly?' on':''}" data-setsave="${v}">${v===A.rec&&A.varM!=null?'⭐ ':''}${money(v)}${v===A.p10?' · 10%':v===A.p20?' · 20%':''}</button>`).join('')}
       ${+S.saveMonthly?'<button class="chip" data-setsave="0">не откладывать</button>':''}</div>
   </div>`;
@@ -1050,7 +1134,6 @@ function renderSettings(){
   ensureIncomeSlots(S);
   const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
   const custom=S.categories.filter(c=>!DEFAULT_CATS.some(d=>d.id===c.id));
-  const hasDemo=S.expenses.some(e=>e.demo)||S.incomes.some(e=>e.demo)||S.debts.some(e=>e.demo);
   const fixedCats=S.categories.filter(c=>c.kind==='fixed');
   const totalInc=monthlyIncome(), totalPl=sum(S.planned);
   const incRow=(i,idx)=>`<div class="srow">
@@ -1066,6 +1149,7 @@ function renderSettings(){
       ${S.incomes.map(incRow).join('')}
       <button class="btn ghost" data-act="addinc">+ Ещё источник дохода</button>
       ${totalInc?`<div class="small sec">Итого в месяц: <b>${money(totalInc)}</b></div>`:''}
+      <label class="check" style="margin:12px 2px 0"><input type="checkbox" data-bind="carry"${S.carry!==false?' checked':''}><span>Переносить неистраченное на следующий период — остаток прибавится к деньгам после следующей выплаты</span></label>
     </div>
     <div class="card"><h2>📌 Обязательные платежи</h2>
       <div class="small sec" style="margin-bottom:10px">Кредиты, ипотека, сплиты, аренда, ЖКХ, связь — всё, что платишь каждый месяц. Эти деньги заранее вычитаются из дневного лимита. Остаток по кредитам — во вкладке «Долги».</div>
@@ -1079,8 +1163,12 @@ function renderSettings(){
     </div>
     <div class="card" id="saveCard"><h2>🐷 Копилка: откладывать в месяц</h2>
       <div class="amount-wrap" style="margin:0"><input class="amount-in num" data-bind="saveMonthly" inputmode="numeric" placeholder="0" value="${S.saveMonthly||''}" style="font-size:30px"><span style="font-size:20px">₽ / мес</span></div>
-      <div class="hint" style="margin:8px 0 0">Сумма делится между авансом и зарплатой и сразу вычитается из дневного лимита.</div>
-      <div id="saveAdvice">${saveAdviceHtml()}</div>
+      <div class="row2 eq" style="margin-top:12px">
+        <div><div class="flabel">Сейчас в копилке</div><input class="inp num" data-bind="piggyBalance" inputmode="numeric" placeholder="0 ₽" value="${S.piggy?.ts?(S.piggy.balance||0):''}"></div>
+        <div><div class="flabel">Дни пополнения</div><input class="inp num" data-bind="piggyDays" inputmode="text" placeholder="с зарплатой" value="${(S.piggy?.days||[]).join(', ')}"></div>
+      </div>
+      <div class="hint" style="margin:8px 0 0">Дни — числа месяца через запятую, например «10, 25». Пусто — откладываю вместе с авансом и зарплатой. Эти деньги сразу вычитаются из дневного лимита.</div>
+      <div id="saveAdvice">${piggyLine()}${saveAdviceHtml()}</div>
     </div>
     ${totalInc?'':`<div class="card"><h2>Лимит на месяц</h2>
       <div class="amount-wrap" style="margin:0"><input class="amount-in num" data-bind="budget" inputmode="numeric" placeholder="Не задан" value="${S.budget||''}" style="font-size:28px"><span style="font-size:22px">₽</span></div>
@@ -1088,14 +1176,6 @@ function renderSettings(){
     ${standalone?'':`<div class="card howto"><h2>📲 Установка на iPhone</h2><ol>
       <li>Открой эту страницу в <b>Safari</b></li><li>Нажми «Поделиться» <span aria-hidden="true">⬆️</span></li>
       <li>Выбери «На экран „Домой“»</li><li>Запускай с иконки — так данные хранятся надёжнее</li></ol></div>`}
-    <div class="card"><h2>Резервная копия</h2>
-      <p class="small sec" style="margin:0 0 12px">Все данные хранятся только на этом устройстве${persisted?' (хранилище закреплено ✅)':''}.
-      Последняя копия: <b>${S.lastBackup?new Date(S.lastBackup).toLocaleDateString('ru-RU'):'ещё не было'}</b>. Сохраняй файл в iCloud Drive или «Файлы».</p>
-      <div class="btns">
-        <button class="btn primary block" data-act="backup">💾 Сохранить копию (JSON)</button>
-        <button class="btn block" data-act="import">📂 Восстановить из файла</button>
-        <button class="btn block" data-act="csv">📄 Выгрузить для Excel (CSV)</button>
-      </div></div>
     <details class="card" id="catsBox"${ui.catsOpen?' open':''}><summary><span>🏷️ Категории · ${S.categories.length}</span><span class="chev">▼</span></summary>
       <div class="small sec" style="margin-bottom:8px">Категория ставится сама по описанию (в базе ~2 800 слов). Поправишь вручную — запомню. Нажми на метку, чтобы сделать категорию обязательной или повседневной.</div>
       ${S.categories.map(c=>`<div class="cat-edit"><span class="em">${c.emoji}</span><span class="nm">${esc(c.name)}</span>
@@ -1103,10 +1183,15 @@ function renderSettings(){
         ${custom.includes(c)?`<button class="x" data-delcat="${esc(c.id)}" aria-label="Удалить категорию">✕</button>`:''}</div>`).join('')}
       <div class="addcat"><input class="inp e" id="ncE" placeholder="🐶" maxlength="4"><input class="inp" id="ncN" placeholder="Новая категория"><button class="btn primary" data-act="addcat">+</button></div>
     </details>
-    <div class="card"><h2>Данные</h2><div class="btns">
-      ${hasDemo?'<button class="btn block" data-act="undemo">Убрать демо-данные</button>':'<button class="btn block" data-act="demo">Загрузить демо-данные</button>'}
-      <button class="btn danger block" data-act="wipe">Удалить все данные</button>
-    </div></div>
+    <div class="card"><h2>💾 Резервная копия</h2>
+      <p class="small sec" style="margin:0 0 12px">Все данные хранятся только на этом устройстве${persisted?' (хранилище закреплено ✅)':''}.
+      Последняя копия: <b>${S.lastBackup?new Date(S.lastBackup).toLocaleDateString('ru-RU'):'ещё не было'}</b>. Раз в неделю напомню сохранить. Сохраняй файл в iCloud Drive или «Файлы».</p>
+      <div class="btns">
+        <button class="btn primary block" data-act="backup">💾 Сохранить копию (JSON)</button>
+        <button class="btn block" data-act="import">📂 Восстановить из файла</button>
+        <button class="btn block" data-act="csv">📄 Выгрузить для Excel (CSV)</button>
+        <button class="btn danger block" data-act="wipe">Удалить все данные</button>
+      </div></div>
     <p class="small muted" style="text-align:center">Расходы · записей: ${S.expenses.length+S.extra.length} · сделано с ☀️</p>
   `;
 }
@@ -1123,7 +1208,7 @@ function openSheet(id,type='exp'){
   $('#fDate').value=e?e.date:(isCurMonth(ui.month)?todayStr():`${ui.month}-01`);
   ui.fCat=e&&type==='exp'?e.cat:null; ui.fManual=!!e; ui.fGuess=e&&type==='exp'?guess(e.desc):null;
   $('#fDel').hidden=!e; $('#fType').hidden=!!e;
-  applyType(); renderRecent(!e&&type==='exp');
+  ui.catsShown=false; applyType();
   openPanel('#sheet');
   setTimeout(()=>$('#fAmount').focus(),e?0:300);
 }
@@ -1133,29 +1218,20 @@ function applyType(){
   $('#fType').classList.toggle('r',inc);
   $('#fDesc').placeholder=inc?'Откуда? Премия, подработка, кэшбэк…':'На что? Булочка, такси, капли в нос…';
   if(!ui.editId)$('#sTitle').textContent=inc?'Новый доход':'Новая трата';
-  $('#fCats').hidden=inc; $('#fGuess').hidden=inc; $('#recent').hidden=inc||!$('#recent').innerHTML;
+  $('#fGuess').hidden=inc; $('#catToggle').hidden=inc; $('#fCats').hidden=inc||!ui.catsShown;
   renderChips();
 }
 let lastChip=null;
 function renderChips(){
   const g=$('#fGuess');
-  if(ui.fCat){const c=cat(ui.fCat);g.innerHTML=`→ <b>${c.emoji} ${esc(c.name)}</b> ${ui.fManual?'':'<span class="muted">(авто, можно поменять ниже)</span>'}`}
+  if(ui.fCat){const c=cat(ui.fCat);g.innerHTML=`→ <b>${c.emoji} ${esc(c.name)}</b> ${ui.fManual?(ui.editId?'':'<button class="btn ghost small" data-act="autocat" style="padding:0 6px">↺ вернуть авто</button>'):'<span class="muted">(авто)</span>'}`}
   else g.innerHTML='<span class="muted">Категорию подберу по описанию ✨</span>';
-  if(ui.fCat&&ui.fCat!==lastChip&&!ui.fManual)haptic();
+  $('#catToggle').textContent=ui.catsShown?'Скрыть категории ▴':'Выбрать категорию вручную ▾';
+  $('#fCats').hidden=ui.fType==='inc'||!ui.catsShown;
   lastChip=ui.fCat;
   const chip=c=>`<button class="chip${ui.fCat===c.id?' on':''}" data-fcat="${esc(c.id)}">${c.emoji} ${esc(c.name)}${ui.fCat===c.id&&!ui.fManual?'<span class="auto">авто</span>':''}</button>`;
   $('#fCats').innerHTML=`<div class="grp">Повседневные</div>${S.categories.filter(c=>c.kind!=='fixed').map(chip).join('')}
     <div class="grp">Обязательные</div>${S.categories.filter(c=>c.kind==='fixed').map(chip).join('')}`;
-}
-function renderRecent(show){
-  const box=$('#recent'); if(!show){box.hidden=true;box.innerHTML='';return}
-  const seen=new Map();
-  for(const e of [...S.expenses].filter(e=>!e.debtId).sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,80)){
-    const n=norm(e.desc); if(!n)continue; const r=seen.get(n)||{e,c:0}; r.c++; seen.set(n,r);
-  }
-  const top=[...seen.values()].sort((a,b)=>b.c-a.c).slice(0,8);
-  box.hidden=!top.length;
-  box.innerHTML=top.map(({e})=>`<button class="chip" data-recent="${e.id}">${cat(e.cat).emoji} ${esc(e.desc)} · ${money(e.amount)}</button>`).join('');
 }
 function saveForm(){
   const amount=parseAmount($('#fAmount').value);
@@ -1347,11 +1423,14 @@ document.addEventListener('click',async ev=>{
   if(t.dataset.retall){const d=S.debts.find(x=>x.id===t.dataset.retall);debtReturn(d,debtLeft(d),t);keepScroll(render);return}
   if(t.dataset.newdebt){openDebt(null,t.dataset.newdebt);return}
   if(t.dataset.debt){openDebt(t.dataset.debt);return}
-  if(t.dataset.setsave!=null){S.saveMonthly=+t.dataset.setsave;save();haptic('success');keepScroll(renderSettings);
+  if(t.dataset.setsave!=null){S.saveMonthly=+t.dataset.setsave;if(!S.piggy?.ts)S.piggy={...(S.piggy||{}),balance:S.piggy?.balance||0,ts:Date.now()};save();haptic('success');keepScroll(renderSettings);
     toast(S.saveMonthly?`🐷 Копилка: ${money(S.saveMonthly)} в месяц`:'Копилка выключена');return}
-  if(t.dataset.fcat){ui.fCat=t.dataset.fcat;ui.fManual=true;haptic();renderChips();return}
-  if(t.dataset.recent){const e=S.expenses.find(x=>x.id===t.dataset.recent);
-    $('#fDesc').value=e.desc;$('#fAmount').value=String(e.amount).replace('.',',');ui.fCat=e.cat;ui.fManual=false;ui.fGuess=e.cat;renderChips();return}
+  if(t.dataset.fcat){
+    // повторное нажатие на выбранную категорию отменяет ручной выбор
+    if(ui.fManual&&ui.fCat===t.dataset.fcat){ui.fManual=false;ui.fCat=guess($('#fDesc').value)}
+    else{ui.fCat=t.dataset.fcat;ui.fManual=true}
+    haptic();renderChips();return}
+  if(t.id==='catToggle'){ui.catsShown=!ui.catsShown;haptic();renderChips();return}
   if(t.dataset.cat){ui.catFilter=t.dataset.cat;ui.search='';go('history');return}
   if(t.dataset.id){openSheet(t.dataset.id,'exp');return}
   if(t.dataset.inc){openSheet(t.dataset.inc,'inc');return}
@@ -1373,6 +1452,7 @@ document.addEventListener('click',async ev=>{
   switch(t.dataset.act){
     case 'clearcat':ui.catFilter=null;render();break;
     case 'backup':backup();break;
+    case 'autocat':ui.fManual=false;ui.fCat=guess($('#fDesc').value);haptic();renderChips();break;
     case 'backupNow':closeSheet();backup();break;
     case 'snoozeSheet':S.backupSnooze=todayStr();save();closeSheet();if(ui.view==='home')keepScroll(renderHome);toast('Напомню завтра');break;
     case 'csv':exportCSV();break;
@@ -1404,6 +1484,12 @@ document.addEventListener('click',async ev=>{
 });
 document.addEventListener('toggle',ev=>{if(ev.target.id==='catsBox')ui.catsOpen=ev.target.open},true);
 addEventListener('scroll',()=>$('header').classList.toggle('scrolled',scrollY>4),{passive:true});
+// заглушка «поверни телефон»: телефон = короткая сторона экрана до 500px и сенсорный экран
+function checkRotate(){
+  const phone=Math.min(screen.width,screen.height)<=500&&(navigator.maxTouchPoints>0||'ontouchstart' in window);
+  document.documentElement.classList.toggle('landscape-phone',phone&&innerWidth>innerHeight);
+}
+addEventListener('resize',checkRotate);addEventListener('orientationchange',()=>setTimeout(checkRotate,150));checkRotate();
 function keepScroll(fn){const y=window.scrollY;fn();window.scrollTo(0,y)}
 document.addEventListener('mouseover',ev=>{const r=ev.target.closest?.('rect.hit');if(!r||!matchMedia('(hover:hover)').matches)return;
   const d=Number(r.dataset.day);if(ui.selDay!==d){ui.selDay=d;updateChartTip()}});
@@ -1415,7 +1501,11 @@ document.addEventListener('input',ev=>{
   if(el.id==='pName'&&!ui.pEdit){const g=guess(el.value);if(g&&isFixed(g))$('#pCat').value=g;return}
   const b=el.dataset?.bind; if(!b)return;
   if(b==='name'){S.name=el.value.trim()}
-  else if(b==='saveMonthly'||b==='budget'){const v=parseAmount(el.value);S[b]=v>0?v:0}
+  else if(b==='piggyBalance'){const v=parseAmount(el.value);S.piggy={...(S.piggy||{}),balance:v>0?v:0,ts:Date.now()}}
+  else if(b==='piggyDays'){const ds=[...new Set((el.value.match(/\d+/g)||[]).map(Number).filter(n=>n>=1&&n<=31))].sort((a,b)=>a-b);S.piggy={...(S.piggy||{}),days:ds}}
+  else if(b==='carry'){S.carry=el.checked}
+  else if(b==='saveMonthly'||b==='budget'){const v=parseAmount(el.value);S[b]=v>0?v:0;
+    if(b==='saveMonthly'&&S[b]&&!S.piggy?.ts)S.piggy={...(S.piggy||{}),balance:S.piggy?.balance||0,ts:Date.now()}}
   else{
     const [arr,id,field]=b.split(':'); const row=S[arr].find(x=>x.id===id); if(!row)return;
     if(field==='amount'){const v=parseAmount(el.value);row.amount=v>0?v:0}
@@ -1427,7 +1517,7 @@ document.addEventListener('input',ev=>{
   }
   save();
   // подсказку по копилке пересчитываем на лету, не трогая поля ввода
-  if(ui.view==='settings'){clearTimeout(adviceTimer);adviceTimer=setTimeout(()=>{const a=$('#saveAdvice');if(a)a.innerHTML=saveAdviceHtml()},250)}
+  if(ui.view==='settings'){clearTimeout(adviceTimer);adviceTimer=setTimeout(()=>{const a=$('#saveAdvice');if(a)a.innerHTML=piggyLine()+saveAdviceHtml()},250)}
 });
 document.addEventListener('change',ev=>{
   const b=ev.target.dataset?.bind||'';
@@ -1451,6 +1541,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S&&ui.vie
   save(); render();
   if(S.expenses.length)askPersist().then(()=>ui.view==='settings'&&render());
   try{screen.orientation?.lock?.('portrait').catch(()=>{})}catch(e){}
+  if(!S.carryFrom){const b=bounds(sod(new Date()));S.carryFrom=b?ymd(b.start):todayStr();save()}
   // раз в неделю предлагаем сохранить копию
   if(backupDue())setTimeout(()=>{if(ui.view==='home'&&!document.querySelector('.sheet.on'))openBackupAsk()},1200);
   if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))
