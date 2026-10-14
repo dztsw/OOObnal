@@ -88,7 +88,7 @@ const tests=[
 ['Копилка: остаток + пополнения по своим дням', async()=>{
   const {ev}=await app(); baseState(ev);
   const day=shift(-10).getDate();
-  ev(`S.saveMonthly=6000;S.piggy={balance:5000,ts:${+shift(-40)},days:[${day}]}`);
+  ev(`S.piggy={days:[${day}]};S.accounts=[{id:'g',type:'goal',name:'Копилка',emoji:'🐷',start:5000,ts:${+shift(-40)},monthly:6000,exclude:true}];syncSave()`);
   // сколько раз «day» наступало после ts и до сегодня включительно
   let n=0; for(let k=-40+1;k<=0;k++) if(shift(k).getDate()===day) n++;
   const pg=ev('piggyNow()'); eq(pg.sum,5000+6000*n,'сумма в копилке'); ok(pg.next&&pg.nextAmt===6000,'следующее пополнение');
@@ -164,6 +164,59 @@ const tests=[
   let a=await app(740,360); ok(a.doc.documentElement.classList.contains('landscape-phone'),'нет класса в горизонтали');
   eq(a.W.getComputedStyle(a.$('.rotate')).display,'grid','заглушка не показана');
   a=await app(360,740); eq(a.W.getComputedStyle(a.$('.rotate')).display,'none','заглушка в вертикали');
+}],
+['Первый вход: спрашиваем баланс, дальше он меняется от трат и доходов', async()=>{
+  const {ev,$,W}=await app(); baseState(ev);
+  ok($('#balIn'),'нет вопроса про баланс на главной');
+  $('#balIn').value='25000'; $('[data-act="setbal"]').click();
+  eq(ev('S.accounts.length'),1,'счёт не создан'); eq(ev('totalBalance()'),25000,'баланс');
+  ev("openSheet()"); $('#fAmount').value='700'; $('#fDesc').value='Пятёрочка'; ev('saveForm()');
+  ev("openSheet(null,'inc')"); $('#fAmount').value='2000'; $('#fDesc').value='Кэшбэк'; ev('saveForm()');
+  eq(ev('totalBalance()'),26300,'баланс после траты и дохода');
+  ok(txt($('#v-home')).includes('26 300'),'баланс не показан на главной');
+}],
+['Счета: «не учитывать в общем балансе», перевод — не трата', async()=>{
+  const {ev,$}=await app(); baseState(ev,`S.accounts=[{id:'m',type:'main',name:'Карта',emoji:'💳',start:10000,ts:Date.now()-1000},{id:'c',type:'card',name:'Наличные',emoji:'💵',start:3000,ts:Date.now()-1000},{id:'v',type:'card',name:'Вклад',emoji:'🏦',start:50000,ts:Date.now()-1000,exclude:true}]`);
+  eq(ev('totalBalance()'),13000,'вклад «вне баланса» попал в итог');
+  const spent0=ev('period().spent');
+  ev("openTransfer('m','c')"); $('#tAmount').value='1500'; ev('saveTransfer()');
+  eq(ev("accBalance(S.accounts[0])"),8500,'списание с карты'); eq(ev("accBalance(S.accounts[1])"),4500,'зачисление на наличные');
+  eq(ev('totalBalance()'),13000,'итог после перевода'); eq(ev('period().spent'),spent0,'перевод посчитан как трата');
+  ev("openSheet()"); $('[data-facc="c"]').click(); $('#fAmount').value='500'; $('#fDesc').value='Шаурма'; ev('saveForm()');
+  eq(ev("accBalance(S.accounts[1])"),4000,'трата не списалась с выбранного счёта'); eq(ev("accBalance(S.accounts[0])"),8500,'трата ушла не с того счёта');
+}],
+['Цель: сколько откладывать в месяц, чтобы успеть к сроку; сумма целей идёт в лимит', async()=>{
+  const {ev,$,W}=await app(); baseState(ev);
+  const D0=shift(0), DD=new Date(D0.getFullYear(),D0.getMonth()+10,D0.getDate()), dl=ymd(DD);
+  ev("go('debts')"); ev("openAcc(null,'goal')");
+  $('#aName').value='Море'; $('#aBal').value='20000'; $('#aTarget').value='120000'; $('#aDeadline').value=dl;
+  $('#aTarget').dispatchEvent(new W.Event('input',{bubbles:true}));
+  const months=(DD-D0)/864e5/30.4, need=Math.ceil(100000/Math.max(1,months)/100)*100;
+  ok(txt($('#aNeedTx')).includes(need.toLocaleString('ru-RU').replace(/ /g,' ')),'подсказка «сколько нужно» не совпала: '+txt($('#aNeedTx')));
+  $('#aUseNeed').click(); ev('saveAcc()');
+  eq(ev('S.accounts.length'),1,'цель не создана'); eq(ev('goalInfo(S.accounts[0]).need'),need,'нужно в месяц');
+  eq(ev('S.saveMonthly'),need,'сумма копилки = сумма по целям');
+  const P=ev('period()'); ok(P.saveAmt>0&&P.limit<P.limitFor(0),'цель не уменьшила лимит');
+  ok(txt($('#v-debts')).includes('Море'),'цели нет во вкладке «Счета»');
+}],
+['Своя сумма копилки без целей создаёт копилку-цель', async()=>{
+  const {ev,$,W}=await app(); baseState(ev); ev("go('settings')");
+  const inp=$('[data-bind="saveMonthly"]'); inp.value='5000'; inp.dispatchEvent(new W.Event('input',{bubbles:true}));
+  eq(ev('goals().length'),1,'копилка-цель не создана'); eq(ev('S.saveMonthly'),5000,'сумма');
+}],
+['Диаграммы по категориям: список, круг, столбцы; выбор категории', async()=>{
+  const {ev,$}=await app(); baseState(ev,`for(const [c,a] of [['food',5000],['cafe',3000],['transport',2000],['health',900],['fun',800],['pets',700],['beauty',600],['shop',500],['sport',400]])S.expenses.push({id:'e'+c,amount:a,desc:c,cat:c,date:'${ymd(shift(-1))}',ts:1})`);
+  ok($('#catsCard .crow'),'по умолчанию нет списка');
+  $('[data-cview="pie"]').click(); ok($('#catsCard svg.donut'),'нет круговой');
+  eq($('#catsCard').querySelectorAll('svg.donut path').length,8,'секторов должно быть 7 + «Остальное»');
+  $('#catsCard .legend button').click(); eq(ev('ui.pieSel'),'food','выбор категории в легенде');
+  ok(txt($('#catsCard .chart-note')).includes('5 000'),'нет суммы выбранной категории');
+  $('[data-cview="bars"]').click(); eq($('#catsCard').querySelectorAll('.vbar').length,8,'столбцов должно быть 8');
+  eq(ev('S.chartView'),'bars','вид не сохранился');
+}],
+['Подпись и версия внизу настроек', async()=>{
+  const {ev,$}=await app(); ev("go('settings')");
+  const t=txt($('#v-settings')); ok(t.includes('версия '+ev('APP_VERSION')),'нет версии'); ok(t.includes('dzts_w'),'нет подписи');
 }],
 ['Автокатегории: 150+ фраз', async()=>{
   const {ev}=await app();
