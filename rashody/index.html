@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Защита: страница может загружать и отправлять данные только на свой же сайт -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Расходы</title>
+<meta name="theme-color" content="#f3f3f0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Расходы">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root{
+  color-scheme: light;
+  --bg:#f3f3f0; --card:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+  --line:#e1e0d9; --base:#c3c2b7; --ring:rgba(11,11,11,.10);
+  --accent:#2a78d6; --accent-strong:#1c5cab; --accent-soft:#cde2fb; --on-accent:#fff;
+  --good:#0ca30c; --good-ink:#006300; --warn:#fab219; --bad:#d03b3b;
+  --shadow:0 1px 2px rgba(0,0,0,.04),0 4px 16px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --bg:#0d0d0d; --card:#1a1a19; --ink:#fff; --ink2:#c3c2b7; --muted:#898781;
+    --line:#2c2c2a; --base:#383835; --ring:rgba(255,255,255,.10);
+    --accent:#3987e5; --accent-strong:#86b6ef; --accent-soft:#184f95; --on-accent:#fff;
+    --good-ink:#0ca30c; --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#0d0d0d; --card:#1a1a19; --ink:#fff; --ink2:#c3c2b7; --muted:#898781;
+  --line:#2c2c2a; --base:#383835; --ring:rgba(255,255,255,.10);
+  --accent:#3987e5; --accent-strong:#86b6ef; --accent-soft:#184f95; --on-accent:#fff;
+  --good-ink:#0ca30c; --shadow:none;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}
+body{min-height:100vh;padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+input,select{font:inherit;font-size:16px;color:var(--ink)}
+.wrap{max-width:560px;margin:0 auto;padding:0 16px}
+
+/* header */
+header{position:sticky;top:0;z-index:5;background:var(--bg);
+  padding:calc(env(safe-area-inset-top) + 10px) 0 10px}
+.mbar{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.mbar h1{font-size:20px;margin:0;font-weight:700;text-transform:capitalize}
+.mnav{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-size:22px;color:var(--ink2)}
+.mnav:active{background:var(--ring)}
+.mnav[disabled]{opacity:.3}
+
+.card{background:var(--card);border-radius:18px;padding:16px;margin:0 0 12px;
+  box-shadow:var(--shadow);border:1px solid var(--ring)}
+.card h2{font-size:15px;margin:0 0 12px;color:var(--ink2);font-weight:600}
+.muted{color:var(--muted)} .sec{color:var(--ink2)}
+.small{font-size:13px}
+.num{font-variant-numeric:tabular-nums}
+
+/* hero */
+.hero .label{font-size:14px;color:var(--ink2)}
+.hero .total{font-size:40px;font-weight:750;letter-spacing:-.02em;margin:2px 0 4px}
+.hero .delta{font-size:14px;color:var(--ink2)}
+.progress{height:10px;background:var(--line);border-radius:5px;overflow:hidden;margin:14px 0 8px}
+.progress>i{display:block;height:100%;border-radius:5px;background:var(--accent);transition:width .3s}
+.progress.warn>i{background:var(--warn)} .progress.bad>i{background:var(--bad)}
+.budget-row{display:flex;justify-content:space-between;font-size:14px;color:var(--ink2);gap:8px;flex-wrap:wrap}
+
+/* insights */
+.tips{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.tips li{display:flex;gap:10px;align-items:flex-start;font-size:15px}
+.tips .ic{flex:none;width:28px;height:28px;border-radius:9px;display:grid;place-items:center;font-size:15px;background:var(--line)}
+.tips .good .ic{background:color-mix(in srgb,var(--good) 20%,transparent)}
+.tips .warn .ic{background:color-mix(in srgb,var(--warn) 25%,transparent)}
+.tips .bad .ic{background:color-mix(in srgb,var(--bad) 20%,transparent)}
+.tips .info .ic{background:color-mix(in srgb,var(--accent) 18%,transparent)}
+.tips b{font-weight:650}
+
+/* categories */
+.cats{display:grid;gap:4px}
+.crow{display:grid;grid-template-columns:28px 1fr auto;gap:2px 10px;align-items:center;
+  padding:8px 6px;border-radius:12px;text-align:left;width:100%}
+.crow:active,.crow:hover{background:var(--ring)}
+.crow .em{font-size:20px;grid-row:span 2;text-align:center}
+.crow .nm{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crow .am{font-size:15px;font-weight:600;text-align:right}
+.crow .bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.crow .bar>i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.crow .pc{font-size:12px;color:var(--muted);text-align:right;min-width:36px}
+
+/* daily chart */
+.chart-tip{font-size:14px;color:var(--ink2);min-height:20px;margin:-4px 0 6px}
+.chart-tip b{color:var(--ink)}
+svg.daily{width:100%;height:auto;display:block;touch-action:pan-y}
+svg.daily .b{fill:var(--accent)}
+svg.daily .b.sel{fill:var(--accent-strong)}
+svg.daily .hit{fill:transparent;cursor:pointer}
+svg.daily .ax{stroke:var(--base);stroke-width:1}
+svg.daily .grid{stroke:var(--line);stroke-width:1}
+svg.daily text{fill:var(--muted);font-size:9px;font-family:inherit}
+
+/* history */
+.search{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--ring);
+  background:var(--card);margin-bottom:10px;outline:none}
+.search:focus{border-color:var(--accent)}
+.filter-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;
+  background:var(--accent-soft);color:var(--ink);font-size:14px;margin-bottom:10px}
+.day-h{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin:16px 4px 6px}
+.day-h:first-child{margin-top:4px}
+.item{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px 4px;
+  border-top:1px solid var(--line)}
+.item:first-of-type{border-top:0}
+.item .em{font-size:22px;width:28px;text-align:center;flex:none}
+.item .tx{flex:1;min-width:0}
+.item .d1{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .d2{font-size:13px;color:var(--muted)}
+.item .am{font-weight:600;white-space:nowrap}
+.empty{text-align:center;color:var(--muted);padding:36px 12px}
+.empty .big{font-size:40px;margin-bottom:8px}
+
+/* settings */
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.field label{font-size:14px;color:var(--ink2)}
+.inp{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--ring);background:var(--bg);outline:none}
+.inp:focus{border-color:var(--accent)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 16px;border-radius:12px;
+  background:var(--line);font-weight:600;font-size:15px}
+.btn.primary{background:var(--accent);color:var(--on-accent)}
+.btn.danger{color:var(--bad)}
+.btn.block{width:100%}
+.btns{display:grid;gap:8px}
+.cat-edit{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.cat-edit:first-child{border-top:0}
+.cat-edit .em{font-size:20px;width:28px;text-align:center}
+.cat-edit .nm{flex:1}
+.cat-edit .x{color:var(--muted);padding:4px 8px;font-size:18px}
+.addcat{display:flex;gap:8px;margin-top:10px}
+.addcat .e{width:56px;text-align:center}
+.banner{display:flex;gap:10px;align-items:center;justify-content:space-between;
+  background:color-mix(in srgb,var(--warn) 18%,var(--card));border:1px solid color-mix(in srgb,var(--warn) 40%,transparent)}
+.banner .btn{background:var(--card);padding:8px 12px}
+.howto ol{margin:6px 0 0;padding-left:20px;color:var(--ink2);font-size:15px}
+.howto li{margin:4px 0}
+
+/* bottom nav */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:10;background:color-mix(in srgb,var(--card) 92%,transparent);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--ring);
+  padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
+nav.tabs .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr 72px 1fr 1fr;align-items:center}
+.tab{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--muted);padding:6px 0}
+.tab .i{font-size:20px;line-height:1;filter:grayscale(1);opacity:.7}
+.tab.on{color:var(--accent)} .tab.on .i{filter:none;opacity:1}
+.fab{width:58px;height:58px;border-radius:20px;background:var(--accent);color:var(--on-accent);
+  font-size:32px;line-height:1;display:grid;place-items:center;margin:-22px auto 0;
+  box-shadow:0 6px 18px color-mix(in srgb,var(--accent) 45%,transparent)}
+.fab:active{transform:scale(.95)}
+
+/* sheet */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:20;opacity:0;pointer-events:none;transition:opacity .2s}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--card);border-radius:22px 22px 0 0;
+  max-width:560px;margin:0 auto;padding:10px 16px calc(16px + env(safe-area-inset-bottom));
+  transform:translateY(105%);transition:transform .25s ease;max-height:92vh;overflow:auto}
+.sheet.on{transform:none}
+.grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 10px}
+.sheet-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.sheet-h h3{margin:0;font-size:18px}
+.amount-in{width:100%;font-size:40px;font-weight:750;border:0;background:transparent;outline:none;padding:4px 0;
+  letter-spacing:-.02em}
+.amount-wrap{display:flex;align-items:baseline;gap:6px;border-bottom:2px solid var(--line);margin-bottom:12px}
+.amount-wrap:focus-within{border-color:var(--accent)}
+.amount-wrap span{font-size:28px;color:var(--muted);font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 14px}
+.chip{padding:8px 12px;border-radius:999px;background:var(--bg);border:1px solid var(--ring);font-size:14px;white-space:nowrap}
+.chip.on{background:var(--accent);color:var(--on-accent);border-color:transparent}
+.chip .auto{font-size:10px;opacity:.85;margin-left:4px;text-transform:uppercase;letter-spacing:.04em}
+.recent{display:flex;gap:8px;overflow-x:auto;margin:0 -16px 12px;padding:0 16px 2px;scrollbar-width:none}
+.recent::-webkit-scrollbar{display:none}
+.recent .chip{flex:none}
+.row2{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+.hint{font-size:13px;color:var(--muted);margin:-6px 0 12px}
+.toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);
+  background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;
+  transition:all .2s;z-index:30;pointer-events:none;max-width:90vw;text-align:center}
+.toast.on{opacity:1;transform:translateX(-50%)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+
+<header><div class="wrap mbar">
+  <button class="mnav" id="prevM" aria-label="Предыдущий месяц">‹</button>
+  <h1 id="mTitle"></h1>
+  <button class="mnav" id="nextM" aria-label="Следующий месяц">›</button>
+</div></header>
+
+<main class="wrap">
+  <section id="v-home"></section>
+  <section id="v-history" hidden></section>
+  <section id="v-settings" hidden></section>
+</main>
+
+<nav class="tabs"><div class="in">
+  <button class="tab on" data-v="home"><span class="i">📊</span>Обзор</button>
+  <button class="tab" data-v="history"><span class="i">🧾</span>История</button>
+  <button class="fab" id="fab" aria-label="Добавить трату">+</button>
+  <button class="tab" data-v="tips"><span class="i">💡</span>Советы</button>
+  <button class="tab" data-v="settings"><span class="i">⚙️</span>Ещё</button>
+</div></nav>
+
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true">
+  <div class="grab"></div>
+  <div class="sheet-h"><h3 id="sTitle">Новая трата</h3><button class="btn" id="sClose" style="padding:6px 12px">Закрыть</button></div>
+  <div class="recent" id="recent"></div>
+  <div class="amount-wrap"><input class="amount-in num" id="fAmount" inputmode="decimal" placeholder="0" autocomplete="off"><span>₽</span></div>
+  <div class="hint">Можно складывать: 250+180</div>
+  <input class="inp" id="fDesc" placeholder="На что? Пятёрочка, такси, кофе…" autocomplete="off" enterkeyhint="done">
+  <div class="chips" id="fCats"></div>
+  <div class="row2" style="margin-bottom:14px">
+    <input class="inp" id="fDate" type="date">
+    <button class="btn" id="fToday">Сегодня</button>
+  </div>
+  <div class="btns">
+    <button class="btn primary block" id="fSave">Сохранить</button>
+    <button class="btn danger block" id="fDel" hidden>Удалить</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<input type="file" id="importFile" accept=".json,application/json" hidden>
+
+<script>
+'use strict';
+/* ---------- константы ---------- */
+const DEFAULT_CATS=[
+  {id:'food',name:'Продукты',emoji:'🛒'},
+  {id:'cafe',name:'Кафе и доставка',emoji:'☕'},
+  {id:'transport',name:'Транспорт',emoji:'🚕'},
+  {id:'home',name:'Жильё и ЖКХ',emoji:'🏠'},
+  {id:'subs',name:'Связь и подписки',emoji:'📱'},
+  {id:'health',name:'Здоровье',emoji:'💊'},
+  {id:'sport',name:'Спорт',emoji:'🏋️'},
+  {id:'beauty',name:'Красота',emoji:'💇'},
+  {id:'shop',name:'Покупки',emoji:'🛍️'},
+  {id:'fun',name:'Развлечения',emoji:'🎬'},
+  {id:'gifts',name:'Подарки',emoji:'🎁'},
+  {id:'other',name:'Другое',emoji:'📦'},
+];
+// ключевые слова: короткие (≤3) — точное совпадение слова, длинные — начало слова, с пробелом — фраза
+const KW={
+  food:['пятерочк','перекрест','магнит','лента','ашан','вкусвилл','дикси','окей','спар','spar','глобус','светофор','чижик',
+    'продукт','супермаркет','магазин','хлеб','молок','овощ','фрукт','мясо','курица','яйца','сыр','рыба','самокат','лавка',
+    'сбермаркет','купер','продукты'],
+  cafe:['кафе','ресторан','кофе','кофейн','капучин','латте','раф','starbucks','шоколадниц','макдон','вкусно и точка','kfc',
+    'ростикс','бургер','burger','пицц','суши','ролл','обед','ужин','завтрак','бар','пиво','доставк','яндекс еда','шаурм',
+    'шаверм','столов','чай','пекарн','булочн','додо','теремок','cofix','кофикс','ланч','бизнес ланч'],
+  transport:['такси','яндекс го','uber','убер','метро','автобус','трамва','троллейб','проезд','тройк','электричк','поезд',
+    'ржд','авиабилет','самолет','бензин','топлив','заправк','азс','лукойл','роснефть','газпромнефт','парковк','каршер',
+    'делимобил','ситидрайв','кикшер','whoosh','юрент','мойка','шиномонтаж','автосервис','осаго','штраф'],
+  home:['аренд','квартплат','квартир','жкх','коммунал','электричеств','свет','отоплен','ремонт','мебел','икеа','ikea',
+    'леруа','хозтовар','бытов','газ'],
+  subs:['мтс','билайн','мегафон','теле2','tele2','yota','йота','связь','мобильн','интернет','подписк','netflix','spotify',
+    'яндекс плюс','кинопоиск','ivi','okko','иви','окко','youtube','ютуб','icloud','apple','google','chatgpt','claude',
+    'vpn','впн'],
+  health:['аптек','лекарств','таблет','врач','доктор','стоматолог','зуб','анализ','клиник','больниц','витамин','массаж',
+    'психолог','очки','линз','поликлин'],
+  sport:['спортзал','зал','фитнес','абонемент','тренир','бассейн','йога','спорт'],
+  beauty:['парикмахер','стрижк','барбер','маникюр','педикюр','косметик','шампун','крем','духи','салон','летуаль',
+    'золотое яблоко'],
+  shop:['одежд','обувь','ozon','озон','wildberries','вайлдберриз','валдберис','вб','wb','маркет','aliexpress','алиэкспресс',
+    'днс','dns','мвидео','эльдорадо','техник','zara','uniqlo','спортмастер','куртк','джинс','футболк','кроссовк','наушник',
+    'fix price','фикс прайс','одежда'],
+  fun:['кино','концерт','театр','игр','steam','стим','playstation','xbox','боулинг','клуб','музей','билет','книг','квест',
+    'караоке','кальян','выставк','парк'],
+  gifts:['подар','цвет','букет','день рождения'],
+};
+const M_NOM=['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
+const M_GEN=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+const M_PREP=['январе','феврале','марте','апреле','мае','июне','июле','августе','сентябре','октябре','ноябре','декабре'];
+const M_DAT=['январю','февралю','марту','апрелю','маю','июню','июлю','августу','сентябрю','октябрю','ноябрю','декабрю'];
+const WD=['вс','пн','вт','ср','чт','пт','сб'];
+// регулярные платежи раз в месяц: не растягиваем их на весь месяц в прогнозе и не рисуем на графике по дням
+const FIXED=new Set(['home','subs']);
+
+/* ---------- утилиты ---------- */
+const $=s=>document.querySelector(s);
+const pad=n=>String(n).padStart(2,'0');
+const ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const mkey=d=>ymd(d).slice(0,7);
+const todayStr=()=>ymd(new Date());
+const parseD=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const shiftMonth=(k,n)=>{const [y,m]=k.split('-').map(Number);return mkey(new Date(y,m-1+n,1))};
+const daysIn=k=>{const [y,m]=k.split('-').map(Number);return new Date(y,m,0).getDate()};
+const mIdx=k=>Number(k.slice(5,7))-1;
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const nf=new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0});
+const money=n=>nf.format(Math.round(n))+' ₽';
+const pct=(a,b)=>b?Math.round(a/b*100):0;
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm=s=>(s||'').toLowerCase().replace(/ё/g,'е').replace(/[^a-zа-я0-9\s]/g,' ').replace(/\s+/g,' ').trim();
+const sum=a=>a.reduce((s,e)=>s+e.amount,0);
+function plural(n,[one,few,many]){n=Math.abs(n)%100;const n1=n%10;
+  if(n>10&&n<20)return many; if(n1>1&&n1<5)return few; if(n1===1)return one; return many;}
+function parseAmount(s){
+  const parts=String(s||'').replace(/\s/g,'').replace(/,/g,'.').split('+').filter(Boolean);
+  let t=0; for(const p of parts){const v=parseFloat(p); if(!isFinite(v))return NaN; t+=v;}
+  return Math.round(t*100)/100;
+}
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('on'),2200)}
+
+/* ---------- хранилище: IndexedDB + копия в localStorage ---------- */
+const LS_KEY='rashody-state';
+function idb(){return new Promise((res,rej)=>{const r=indexedDB.open('rashody',1);
+  r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+async function loadState(){
+  let st=null;
+  try{const db=await idb();st=await new Promise((res,rej)=>{const q=db.transaction('kv').objectStore('kv').get('state');
+    q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})}catch(e){}
+  if(!st){try{st=JSON.parse(localStorage.getItem(LS_KEY))}catch(e){}}
+  return st;
+}
+let saveTimer;
+function save(){clearTimeout(saveTimer);saveTimer=setTimeout(saveNow,150)}
+async function saveNow(){
+  const snap=JSON.parse(JSON.stringify(S));
+  try{const db=await idb();await new Promise((res,rej)=>{const t=db.transaction('kv','readwrite');
+    t.objectStore('kv').put(snap,'state');t.oncomplete=res;t.onerror=()=>rej(t.error)})}catch(e){}
+  try{localStorage.setItem(LS_KEY,JSON.stringify(snap))}catch(e){}
+}
+let persisted=null;
+async function askPersist(){
+  try{ if(navigator.storage?.persisted){persisted=await navigator.storage.persisted();
+    if(!persisted&&navigator.storage.persist)persisted=await navigator.storage.persist();} }catch(e){}
+}
+function freshState(){return {v:1,expenses:[],categories:DEFAULT_CATS.map(c=>({...c})),budget:0,learned:{},lastBackup:0,created:Date.now()}}
+
+/* ---------- авто-категории ---------- */
+function dictGuess(n){
+  if(!n)return null; const toks=n.split(' '),padded=' '+n+' '; let best=null,bl=0;
+  for(const [cat,list] of Object.entries(KW)) for(const kw of list){
+    let hit;
+    if(kw.includes(' '))hit=padded.includes(' '+kw);
+    else if(kw.length<=3)hit=toks.includes(kw);
+    else hit=toks.some(t=>t.startsWith(kw));
+    if(hit&&kw.length>bl){best=cat;bl=kw.length}
+  }
+  return best;
+}
+const catExists=id=>id&&S.categories.some(c=>c.id===id);
+function guess(desc){
+  const n=norm(desc); if(!n)return null; const L=S.learned||{};
+  if(catExists(L[n]))return L[n];
+  for(const t of n.split(' '))if(catExists(L['w:'+t]))return L['w:'+t];
+  const d=dictGuess(n); return catExists(d)?d:'other';
+}
+const cat=id=>S.categories.find(c=>c.id===id)||S.categories.find(c=>c.id==='other')||{id:'other',name:'Другое',emoji:'📦'};
+
+/* ---------- состояние интерфейса ---------- */
+let S;
+const ui={month:mkey(new Date()),view:'home',catFilter:null,search:'',editId:null,fCat:null,fManual:false,fGuess:null,selDay:null};
+const inMonth=k=>S.expenses.filter(e=>e.date.startsWith(k));
+const isCurMonth=k=>k===mkey(new Date());
+
+/* ---------- советы ---------- */
+function insights(k){
+  const out=[]; const exps=inMonth(k); const total=sum(exps);
+  const cur=isCurMonth(k); const N=daysIn(k); const d=cur?new Date().getDate():N;
+  const prevK=shiftMonth(k,-1); const prevAll=inMonth(prevK);
+  const prevCmp=cur?prevAll.filter(e=>Number(e.date.slice(8))<=d):prevAll;
+  const prevTotal=sum(prevCmp);
+  if(!exps.length){
+    out.push({t:'info',i:'✍️',x:'Пока нет трат за этот месяц. Нажми <b>+</b> внизу — категорию я подберу сам по описанию.'});
+    return out;
+  }
+  // 1. бюджет и темп
+  if(S.budget>0){
+    if(total>S.budget){
+      out.push({t:'bad',i:'⛔',x:`Бюджет превышен на <b>${money(total-S.budget)}</b>.`+(cur?' До конца месяца лучше обходиться самым необходимым.':'')});
+    }else if(cur){
+      const fixed=sum(exps.filter(e=>FIXED.has(e.cat))), forecast=fixed+(total-fixed)/d*N, left=S.budget-total, daysLeft=N-d+1, perDay=left/daysLeft;
+      if(forecast>S.budget*1.05)
+        out.push({t:'warn',i:'⚠️',x:`При таком темпе к концу месяца выйдет около <b>${money(forecast)}</b> — на ${money(forecast-S.budget)} больше бюджета. Чтобы уложиться, трать не больше <b>${money(perDay)}</b> в день.`});
+      else
+        out.push({t:'good',i:'✅',x:`Идёшь в рамках бюджета: прогноз на месяц ~${money(forecast)}. Можно тратить до <b>${money(perDay)}</b> в день.`});
+    }else{
+      out.push({t:'good',i:'✅',x:`Месяц закрыт в рамках бюджета, сэкономлено <b>${money(S.budget-total)}</b>.`});
+    }
+  }else{
+    out.push({t:'info',i:'🎯',x:'Задай месячный бюджет во вкладке «Ещё» — буду следить за темпом и подсказывать дневной лимит.'});
+  }
+  // 2. сравнение с прошлым месяцем
+  if(prevTotal>0){
+    const byCur=groupBy(exps), byPrev=groupBy(prevCmp); let worst=null;
+    for(const [c,v] of Object.entries(byCur)){
+      const p=byPrev[c]||0, diff=v-p;
+      if(p>0&&v>p*1.3&&diff>Math.max(500,total*.05)&&(!worst||diff>worst.diff))worst={c,v,p,diff};
+    }
+    const per=cur?' за то же время':'';
+    if(worst)out.push({t:'warn',i:'📈',x:`${cat(worst.c).emoji} <b>${esc(cat(worst.c).name)}</b>: ${money(worst.v)} — на ${pct(worst.diff,worst.p)}% больше, чем${per} в ${M_PREP[mIdx(prevK)]}.`});
+    const ch=total/prevTotal-1;
+    if(ch<=-0.1)out.push({t:'good',i:'👍',x:`В целом тратишь на <b>${Math.round(-ch*100)}% меньше</b>, чем${per} в ${M_PREP[mIdx(prevK)]}. Так держать!`});
+  }
+  // 3. мелкие частые траты
+  const small=exps.filter(e=>e.amount<=500);
+  if(small.length>=10){
+    const s=sum(small);
+    out.push({t:'info',i:'☕',x:`${small.length} ${plural(small.length,['мелкая покупка','мелкие покупки','мелких покупок'])} до 500 ₽ на <b>${money(s)}</b>. Мелочи складываются: в пересчёте на год это ~${money(s/d*365)}.`});
+  }
+  // 4. доминирующая категория (без жилья — оно почти всегда крупное)
+  const by=groupBy(exps); const top=Object.entries(by).filter(([c])=>c!=='home').sort((a,b)=>b[1]-a[1])[0];
+  if(top&&top[1]/total>=.35&&exps.length>=5)
+    out.push({t:'info',i:'🔎',x:`${pct(top[1],total)}% всех расходов — ${cat(top[0]).emoji} <b>${esc(cat(top[0]).name)}</b>. Если хочешь сэкономить, начни отсюда.`});
+  // 5. подписки
+  const subs=exps.filter(e=>e.cat==='subs');
+  if(subs.length>=3)out.push({t:'info',i:'🔁',x:`На связь и подписки ушло <b>${money(sum(subs))}</b> (${subs.length} ${plural(subs.length,['платёж','платежа','платежей'])}). Проверь, всем ли пользуешься.`});
+  // 6. выходные vs будни
+  const days={};for(const e of exps)days[e.date]=(days[e.date]||0)+(FIXED.has(e.cat)?0:e.amount);
+  let we=[],wd=[];for(const [ds,v] of Object.entries(days)){const w=parseD(ds).getDay();(w===0||w===6?we:wd).push(v)}
+  if(we.length>=2&&wd.length>=4){const a=we.reduce((s,v)=>s+v,0)/we.length,b=wd.reduce((s,v)=>s+v,0)/wd.length;
+    if(a>b*1.6)out.push({t:'info',i:'📅',x:`В выходные тратишь в <b>${(a/b).toFixed(1).replace('.',',')} раза больше</b>, чем в будни (${money(a)} против ${money(b)} в день).`});}
+  // 7. крупнейшая трата
+  const big=[...exps].sort((a,b)=>b.amount-a.amount)[0];
+  if(big&&big.amount/total>=.15&&big.cat!=='home')
+    out.push({t:'info',i:'💸',x:`Самая крупная трата — «${esc(big.desc||cat(big.cat).name)}» на <b>${money(big.amount)}</b> (${pct(big.amount,total)}% месяца).`});
+  // 8. много «Другое»
+  const oth=sum(exps.filter(e=>e.cat==='other'));
+  if(oth/total>.15&&oth>1000)out.push({t:'info',i:'🏷️',x:`${pct(oth,total)}% трат лежит в «Другом». Уточни им категории — я запомню, и советы станут точнее.`});
+  return out;
+}
+function groupBy(exps){const r={};for(const e of exps)r[e.cat]=(r[e.cat]||0)+e.amount;return r}
+
+/* ---------- отрисовка ---------- */
+function render(){
+  const k=ui.month, [y]=k.split('-');
+  $('#mTitle').textContent=M_NOM[mIdx(k)]+(Number(y)!==new Date().getFullYear()?' '+y:'');
+  $('#nextM').disabled=k>=mkey(new Date());
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.v===ui.view));
+  $('#v-home').hidden=!(ui.view==='home'||ui.view==='tips');
+  $('#v-history').hidden=ui.view!=='history';
+  $('#v-settings').hidden=ui.view!=='settings';
+  $('header').hidden=ui.view==='settings';
+  if(ui.view==='home'||ui.view==='tips')renderHome();
+  if(ui.view==='history')renderHistory();
+  if(ui.view==='settings')renderSettings();
+}
+
+function renderHome(){
+  const k=ui.month, exps=inMonth(k), total=sum(exps), cur=isCurMonth(k), N=daysIn(k);
+  const prevK=shiftMonth(k,-1), d=cur?new Date().getDate():N;
+  const prevCmp=inMonth(prevK).filter(e=>!cur||Number(e.date.slice(8))<=d), pt=sum(prevCmp);
+  let delta='';
+  if(pt>0&&total>0){const c=Math.round((total/pt-1)*100);
+    delta=`${c>0?'↑':c<0?'↓':'='} ${Math.abs(c)}% к ${M_DAT[mIdx(prevK)]}${cur?' за те же дни':''}`;}
+  else if(exps.length)delta=`${exps.length} ${plural(exps.length,['трата','траты','трат'])}`;
+
+  let budget='';
+  if(S.budget>0){
+    const p=total/S.budget, exp=cur?d/N:1;
+    const cls=p>1?'bad':(cur&&p>exp*1.05?'warn':'');
+    const left=S.budget-total;
+    budget=`<div class="progress ${cls}" role="img" aria-label="Потрачено ${pct(total,S.budget)}% бюджета"><i style="width:${Math.min(100,p*100)}%"></i></div>
+      <div class="budget-row"><span>${pct(total,S.budget)}% из ${money(S.budget)}</span>
+      <span>${left>=0?'осталось <b>'+money(left)+'</b>':'перерасход <b>'+money(-left)+'</b>'}</span></div>`;
+  }
+  const backupDue=S.expenses.length>=10&&Date.now()-(S.lastBackup||S.created||0)>14*864e5;
+  const tips=insights(k);
+  const by=Object.entries(groupBy(exps)).sort((a,b)=>b[1]-a[1]);
+  const max=by.length?by[0][1]:1;
+
+  const tipsHtml=`<div class="card" id="tipsCard"><h2>Советы и наблюдения</h2><ul class="tips">${
+    tips.map(t=>`<li class="${t.t}"><span class="ic" aria-hidden="true">${t.i}</span><span>${t.x}</span></li>`).join('')}</ul></div>`;
+
+  $('#v-home').innerHTML=`
+    ${backupDue?`<div class="card banner"><span class="small">💾 Давно не было резервной копии</span><button class="btn" data-act="backup">Сохранить</button></div>`:''}
+    <div class="card hero">
+      <div class="label">Потрачено в ${M_PREP[mIdx(k)]}</div>
+      <div class="total">${money(total)}</div>
+      <div class="delta">${delta||'&nbsp;'}</div>
+      ${budget}
+    </div>
+    ${ui.view==='tips'?tipsHtml:''}
+    ${by.length?`<div class="card"><h2>По категориям</h2><div class="cats">${by.map(([c,v])=>`
+      <button class="crow" data-cat="${esc(c)}"><span class="em">${cat(c).emoji}</span>
+        <span class="nm">${esc(cat(c).name)}</span><span class="am num">${money(v)}</span>
+        <span class="bar"><i style="width:${Math.max(2,v/max*100)}%"></i></span><span class="pc num">${pct(v,total)}%</span>
+      </button>`).join('')}</div></div>`:''}
+    ${exps.length?`<div class="card"><h2>По дням <span class="muted" style="font-weight:400">· без жилья и подписок</span></h2><div class="chart-tip" id="ctip"></div>${dailyChart(k)}</div>`:''}
+    ${ui.view!=='tips'?tipsHtml:''}
+    ${!S.expenses.length?`<div class="card"><div class="empty"><div class="big">👛</div>Здесь пока пусто.<br>Добавь первую трату кнопкой <b>+</b><br>или загрузи демо-данные, чтобы посмотреть, как всё работает.<br><br><button class="btn primary" data-act="demo">Загрузить демо</button></div></div>`:''}
+  `;
+  updateChartTip();
+  if(ui.view==='tips')$('#tipsCard')?.scrollIntoView({block:'start'});
+}
+
+function dailyChart(k){
+  const N=daysIn(k), vals=Array(N).fill(0);
+  for(const e of inMonth(k))if(!FIXED.has(e.cat))vals[Number(e.date.slice(8))-1]+=e.amount;
+  const W=320,H=130,top=8,bot=18,ch=H-top-bot,slot=W/N,bw=Math.max(2,slot-2),mx=Math.max(...vals,1);
+  const cur=isCurMonth(k), today=new Date().getDate();
+  let s=`<svg class="daily" viewBox="0 0 ${W} ${H}" role="img" aria-label="Расходы по дням">`;
+  s+=`<line class="grid" x1="0" x2="${W}" y1="${top}" y2="${top}"/><text x="${W}" y="${top-1}" text-anchor="end" style="font-size:8px">${money(mx)}</text>`;
+  vals.forEach((v,i)=>{
+    const x=i*slot+(slot-bw)/2;
+    if(v>0){const h=Math.max(2,v/mx*ch),y=top+ch-h,r=Math.min(3,bw/2,h);
+      s+=`<path class="b${ui.selDay===i+1?' sel':''}" d="M${x},${top+ch}V${y+r}Q${x},${y} ${x+r},${y}H${x+bw-r}Q${x+bw},${y} ${x+bw},${y+r}V${top+ch}Z"/>`;}
+    if(!cur||i+1<=today)s+=`<rect class="hit" data-day="${i+1}" x="${i*slot}" y="0" width="${slot}" height="${H}"/>`;
+  });
+  s+=`<line class="ax" x1="0" x2="${W}" y1="${top+ch+.5}" y2="${top+ch+.5}"/>`;
+  for(const dd of [1,10,20,N])s+=`<text x="${(dd-.5)*slot}" y="${H-4}" text-anchor="middle">${dd}</text>`;
+  return s+'</svg>';
+}
+function updateChartTip(){
+  const el=$('#ctip'); if(!el)return; const k=ui.month;
+  if(!ui.selDay){const n=isCurMonth(k)?new Date().getDate():daysIn(k);
+    el.innerHTML=`В среднем <b>${money(sum(inMonth(k).filter(e=>!FIXED.has(e.cat)))/n)}</b> в день · нажми на столбик`;return;}
+  const ds=`${k}-${pad(ui.selDay)}`, ex=S.expenses.filter(e=>e.date===ds&&!FIXED.has(e.cat));
+  el.innerHTML=`${ui.selDay} ${M_GEN[mIdx(k)]}, ${WD[parseD(ds).getDay()]}: <b>${money(sum(ex))}</b>${ex.length?` · ${ex.length} ${plural(ex.length,['трата','траты','трат'])}`:''}`;
+}
+
+function renderHistory(){
+  const k=ui.month, q=norm(ui.search);
+  let exps=inMonth(k);
+  if(ui.catFilter)exps=exps.filter(e=>e.cat===ui.catFilter);
+  if(q)exps=exps.filter(e=>norm(e.desc+' '+cat(e.cat).name).includes(q));
+  exps.sort((a,b)=>b.date.localeCompare(a.date)||b.ts-a.ts);
+  const groups={};for(const e of exps)(groups[e.date]||(groups[e.date]=[])).push(e);
+  const has=document.activeElement?.id==='search';
+  $('#v-history').innerHTML=`
+    <input class="search" id="search" type="search" placeholder="Поиск по тратам" value="${esc(ui.search)}">
+    ${ui.catFilter?`<button class="filter-chip" data-act="clearcat">${cat(ui.catFilter).emoji} ${esc(cat(ui.catFilter).name)} · ${money(sum(exps))} <span aria-label="Сбросить">✕</span></button>`:''}
+    ${exps.length?`<div class="card" style="padding:8px 12px">${Object.entries(groups).map(([ds,list])=>{const dt=parseD(ds);
+      return `<div class="day-h"><span>${dt.getDate()} ${M_GEN[dt.getMonth()]}, ${WD[dt.getDay()]}</span><span class="num">${money(sum(list))}</span></div>`+
+      list.map(e=>`<button class="item" data-id="${e.id}"><span class="em">${cat(e.cat).emoji}</span>
+        <span class="tx"><div class="d1">${esc(e.desc||cat(e.cat).name)}</div><div class="d2">${esc(cat(e.cat).name)}</div></span>
+        <span class="am num">${money(e.amount)}</span></button>`).join('')}).join('')}</div>`
+      :`<div class="empty"><div class="big">🧾</div>${q||ui.catFilter?'Ничего не найдено':'В этом месяце трат нет'}</div>`}
+  `;
+  if(has){const s=$('#search');s.focus();s.setSelectionRange(s.value.length,s.value.length)}
+}
+
+function renderSettings(){
+  const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+  const custom=S.categories.filter(c=>!DEFAULT_CATS.some(d=>d.id===c.id));
+  const hasDemo=S.expenses.some(e=>e.demo);
+  $('#v-settings').innerHTML=`
+    <div style="height:calc(env(safe-area-inset-top) + 16px)"></div>
+    <div class="card"><h2>Бюджет на месяц</h2>
+      <div class="amount-wrap" style="margin:0"><input class="amount-in num" id="budget" inputmode="numeric" placeholder="Не задан" value="${S.budget||''}" style="font-size:28px"><span style="font-size:22px">₽</span></div>
+      <div class="hint" style="margin:8px 0 0">Нужен для прогноза и дневного лимита. Оставь пустым, чтобы отключить.</div>
+    </div>
+    ${standalone?'':`<div class="card howto"><h2>📲 Установка на iPhone</h2><ol>
+      <li>Открой эту страницу в <b>Safari</b></li>
+      <li>Нажми «Поделиться» <span aria-hidden="true">⬆️</span></li>
+      <li>Выбери «На экран „Домой“»</li>
+      <li>Запускай с иконки — так данные хранятся надёжнее</li></ol></div>`}
+    <div class="card"><h2>Резервная копия</h2>
+      <p class="small sec" style="margin:0 0 12px">Все данные хранятся только на этом устройстве${persisted?' (хранилище закреплено ✅)':''}.
+      Последняя копия: <b>${S.lastBackup?new Date(S.lastBackup).toLocaleDateString('ru-RU'):'ещё не было'}</b>.
+      Сохраняй файл в iCloud Drive или «Файлы».</p>
+      <div class="btns">
+        <button class="btn primary block" data-act="backup">💾 Сохранить копию (JSON)</button>
+        <button class="btn block" data-act="import">📂 Восстановить из файла</button>
+        <button class="btn block" data-act="csv">📄 Выгрузить для Excel (CSV)</button>
+      </div></div>
+    <div class="card"><h2>Категории</h2>
+      <div class="small sec" style="margin-bottom:8px">Категория ставится автоматически по описанию. Если поправишь её вручную — запомню на будущее.</div>
+      ${S.categories.map(c=>`<div class="cat-edit"><span class="em">${c.emoji}</span><span class="nm">${esc(c.name)}</span>
+        ${custom.includes(c)?`<button class="x" data-delcat="${esc(c.id)}" aria-label="Удалить категорию">✕</button>`:''}</div>`).join('')}
+      <div class="addcat"><input class="inp e" id="ncE" placeholder="🐶" maxlength="4"><input class="inp" id="ncN" placeholder="Новая категория"><button class="btn primary" data-act="addcat">+</button></div>
+    </div>
+    <div class="card"><h2>Данные</h2><div class="btns">
+      ${hasDemo?'<button class="btn block" data-act="undemo">Убрать демо-данные</button>':'<button class="btn block" data-act="demo">Загрузить демо-данные</button>'}
+      <button class="btn danger block" data-act="wipe">Удалить все данные</button>
+    </div></div>
+    <p class="small muted" style="text-align:center">Расходы · всего записей: ${S.expenses.length}</p>
+  `;
+}
+
+/* ---------- форма добавления ---------- */
+function openSheet(id){
+  ui.editId=id||null; const e=id&&S.expenses.find(x=>x.id===id);
+  $('#sTitle').textContent=e?'Редактировать':'Новая трата';
+  $('#fAmount').value=e?String(e.amount).replace('.',','):'';
+  $('#fDesc').value=e?e.desc:'';
+  const defDate=isCurMonth(ui.month)?todayStr():`${ui.month}-01`;
+  $('#fDate').value=e?e.date:defDate;
+  ui.fCat=e?e.cat:null; ui.fManual=!!e; ui.fGuess=e?guess(e.desc):null;
+  $('#fDel').hidden=!e;
+  renderRecent(!e); renderChips();
+  $('#scrim').classList.add('on'); $('#sheet').classList.add('on');
+  setTimeout(()=>$('#fAmount').focus(),e?0:250);
+}
+function closeSheet(){$('#scrim').classList.remove('on');$('#sheet').classList.remove('on');document.activeElement?.blur()}
+function renderChips(){
+  $('#fCats').innerHTML=S.categories.map(c=>`<button class="chip${ui.fCat===c.id?' on':''}" data-fcat="${esc(c.id)}">${c.emoji} ${esc(c.name)}${
+    ui.fCat===c.id&&!ui.fManual?'<span class="auto">авто</span>':''}</button>`).join('');
+}
+function renderRecent(show){
+  const box=$('#recent'); if(!show){box.hidden=true;return}
+  const seen=new Map();
+  for(const e of [...S.expenses].sort((a,b)=>b.ts-a.ts).slice(0,80)){
+    const n=norm(e.desc); if(!n)continue; const r=seen.get(n)||{e,c:0}; r.c++; seen.set(n,r);
+  }
+  const top=[...seen.values()].sort((a,b)=>b.c-a.c).slice(0,8);
+  box.hidden=!top.length;
+  box.innerHTML=top.map(({e})=>`<button class="chip" data-recent="${e.id}">${cat(e.cat).emoji} ${esc(e.desc)} · ${money(e.amount)}</button>`).join('');
+}
+function saveForm(){
+  const amount=parseAmount($('#fAmount').value);
+  if(!(amount>0)){toast('Введи сумму');$('#fAmount').focus();return}
+  const desc=$('#fDesc').value.trim(); const date=$('#fDate').value||todayStr();
+  const c=ui.fCat||guess(desc)||'other';
+  const n=norm(desc);
+  if(n){
+    S.learned[n]=c;
+    if(ui.fManual&&ui.fGuess&&ui.fGuess!==c){const t=n.split(' ').find(t=>t.length>=3);if(t)S.learned['w:'+t]=c}
+  }
+  if(ui.editId){const e=S.expenses.find(x=>x.id===ui.editId);Object.assign(e,{amount,desc,date,cat:c});delete e.demo}
+  else S.expenses.push({id:uid(),amount,desc,date,cat:c,ts:Date.now()});
+  save(); closeSheet();
+  if(date.slice(0,7)!==ui.month)ui.month=date.slice(0,7);
+  render(); toast(ui.editId?'Сохранено':`${cat(c).emoji} ${cat(c).name}: ${money(amount)}`);
+  if(persisted===null)askPersist();
+}
+
+/* ---------- экспорт / импорт ---------- */
+const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+async function shareOrDownload(name,text,type){
+  const blob=new Blob([text],{type});
+  if(isIOS&&navigator.canShare){
+    const file=new File([blob],name,{type});
+    if(navigator.canShare({files:[file]})){
+      try{await navigator.share({files:[file]});return true}catch(e){if(e.name==='AbortError')return false}
+    }
+  }
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);return true;
+}
+async function backup(){
+  const ok=await shareOrDownload(`rashody-${todayStr()}.json`,JSON.stringify({app:'rashody',v:1,exportedAt:new Date().toISOString(),data:S},null,1),'application/json');
+  if(ok){S.lastBackup=Date.now();save();render();toast('Копия сохранена')}
+}
+function exportCSV(){
+  const rows=[['Дата','Категория','Описание','Сумма']];
+  for(const e of [...S.expenses].sort((a,b)=>a.date.localeCompare(b.date)))rows.push([e.date,cat(e.cat).name,e.desc,String(e.amount).replace('.',',')]);
+  const csv='﻿'+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(';')).join('\r\n');
+  shareOrDownload(`rashody-${todayStr()}.csv`,csv,'text/csv');
+}
+async function importFile(file){
+  try{
+    const j=JSON.parse(await file.text()); const d=j.data||j;
+    if(!Array.isArray(d.expenses))throw new Error('bad');
+    const ids=new Set(S.expenses.map(e=>e.id)); let added=0;
+    for(const e of d.expenses){if(e&&e.id&&!ids.has(e.id)&&e.amount>0&&/^\d{4}-\d\d-\d\d$/.test(e.date)){S.expenses.push(e);added++}}
+    for(const c of d.categories||[])if(c&&c.id&&!catExists(c.id))S.categories.push(c);
+    Object.assign(S.learned,d.learned||{}); if(!S.budget&&d.budget)S.budget=d.budget;
+    save();render();toast(`Добавлено записей: ${added}`);
+  }catch(e){toast('Не получилось прочитать файл')}
+}
+
+/* ---------- демо-данные ---------- */
+function makeDemo(){
+  const out=[],today=new Date(),start=new Date(today.getFullYear(),today.getMonth()-1,1);
+  const r=(a,b)=>Math.round((a+Math.random()*(b-a))/10)*10, pick=a=>a[Math.floor(Math.random()*a.length)];
+  for(const d=new Date(start);d<=today;d.setDate(d.getDate()+1)){
+    const day=d.getDate(),w=d.getDay(),we=w===0||w===6,ds=ymd(d),cur=d.getMonth()===today.getMonth();
+    const add=(desc,amount)=>out.push({id:uid(),desc,amount,date:ds,cat:guess(desc),ts:d.getTime()+out.length,demo:true});
+    if(day===1)add('Аренда квартиры',35000);
+    if(day===10)add('Коммуналка ЖКХ',r(4200,5600));
+    if(day===5)add('МТС связь',650);
+    if(day===12)add('Яндекс Плюс',399);
+    if(day===20)add('VPN подписка',290);
+    if(day===15)add('Спортзал абонемент',3500);
+    if(w===1)add('Пополнение Тройки',1000);
+    if(Math.random()<.45)add(pick(['Пятёрочка','Перекрёсток','ВкусВилл','Магнит','Лента']),r(450,2600));
+    if(!we&&Math.random()<(cur?.85:.55))add(pick(['Кофе','Капучино','Кофе с собой','Латте']),r(190,350));
+    if(!we&&Math.random()<.35)add('Обед',r(350,650));
+    if(Math.random()<(cur?.4:.25))add(pick(['Такси','Яндекс Го']),r(280,900));
+    if(we&&Math.random()<.55)add(pick(['Ресторан','Суши','Пицца','Бар с друзьями']),r(1200,3800));
+    if(we&&Math.random()<.25)add(pick(['Кино','Боулинг','Концерт']),r(500,2500));
+    if(Math.random()<.07)add(pick(['Ozon','Wildberries','Кроссовки','Футболка']),r(800,6000));
+    if(Math.random()<.05)add('Аптека',r(300,1500));
+    if(Math.random()<.03)add('Стрижка барбер',1500);
+  }
+  return out;
+}
+
+/* ---------- события ---------- */
+document.addEventListener('click',async ev=>{
+  const t=ev.target.closest('button,rect.hit'); if(!t)return;
+  if(t.classList.contains('tab')){ui.view=t.dataset.v;window.scrollTo(0,0);render();return}
+  if(t.id==='fab'){openSheet();return}
+  if(t.id==='prevM'){ui.month=shiftMonth(ui.month,-1);ui.selDay=null;render();return}
+  if(t.id==='nextM'){ui.month=shiftMonth(ui.month,1);ui.selDay=null;render();return}
+  if(t.id==='sClose'){closeSheet();return}
+  if(t.id==='fSave'){saveForm();return}
+  if(t.id==='fToday'){$('#fDate').value=todayStr();return}
+  if(t.id==='fDel'){if(confirm('Удалить эту трату?')){S.expenses=S.expenses.filter(e=>e.id!==ui.editId);save();closeSheet();render();toast('Удалено')}return}
+  if(t.dataset.fcat){ui.fCat=t.dataset.fcat;ui.fManual=true;renderChips();return}
+  if(t.dataset.recent){const e=S.expenses.find(x=>x.id===t.dataset.recent);
+    $('#fDesc').value=e.desc;$('#fAmount').value=String(e.amount).replace('.',',');ui.fCat=e.cat;ui.fManual=false;ui.fGuess=e.cat;renderChips();return}
+  if(t.dataset.cat){ui.catFilter=t.dataset.cat;ui.view='history';ui.search='';window.scrollTo(0,0);render();return}
+  if(t.dataset.id){openSheet(t.dataset.id);return}
+  if(t.dataset.day){const d=Number(t.dataset.day);ui.selDay=ui.selDay===d?null:d;
+    document.querySelectorAll('svg.daily .b').forEach(b=>b.classList.remove('sel'));
+    $('#v-home').querySelector('.card svg.daily')&&renderHomeKeepScroll();return}
+  if(t.dataset.delcat){const id=t.dataset.delcat;if(!confirm('Удалить категорию? Её траты перейдут в «Другое».'))return;
+    S.categories=S.categories.filter(c=>c.id!==id);S.expenses.forEach(e=>{if(e.cat===id)e.cat='other'});
+    for(const k in S.learned)if(S.learned[k]===id)delete S.learned[k];save();render();return}
+  switch(t.dataset.act){
+    case 'clearcat':ui.catFilter=null;render();break;
+    case 'backup':backup();break;
+    case 'csv':exportCSV();break;
+    case 'import':$('#importFile').click();break;
+    case 'addcat':{const n=$('#ncN').value.trim();if(!n){toast('Введи название');return}
+      S.categories.splice(S.categories.length-1,0,{id:'c'+uid(),name:n,emoji:$('#ncE').value.trim()||'🏷️'});save();render();toast('Категория добавлена');break}
+    case 'demo':S.expenses=S.expenses.filter(e=>!e.demo).concat(makeDemo());if(!S.budget)S.budget=90000;save();ui.view='home';render();toast('Демо-данные загружены');break;
+    case 'undemo':S.expenses=S.expenses.filter(e=>!e.demo);save();render();toast('Демо-данные удалены');break;
+    case 'wipe':if(confirm('Удалить ВСЕ траты и настройки? Это нельзя отменить.')){S=freshState();save();render();toast('Всё удалено')}break;
+  }
+});
+function renderHomeKeepScroll(){const y=window.scrollY;renderHome();window.scrollTo(0,y)}
+document.addEventListener('mouseover',ev=>{const r=ev.target.closest?.('rect.hit');if(!r||!matchMedia('(hover:hover)').matches)return;
+  const d=Number(r.dataset.day);if(ui.selDay!==d){ui.selDay=d;document.querySelectorAll('svg.daily .b.sel').forEach(b=>b.classList.remove('sel'));updateChartTip()}});
+document.addEventListener('input',ev=>{
+  if(ev.target.id==='fDesc'&&!ui.fManual){ui.fGuess=guess(ev.target.value);ui.fCat=ui.fGuess;renderChips()}
+  else if(ev.target.id==='fDesc'){ui.fGuess=guess(ev.target.value)}
+  if(ev.target.id==='search'){ui.search=ev.target.value;renderHistory()}
+  if(ev.target.id==='budget'){const v=parseAmount(ev.target.value);S.budget=v>0?v:0;save()}
+});
+document.addEventListener('keydown',ev=>{
+  if(ev.key==='Enter'&&(ev.target.id==='fAmount'||ev.target.id==='fDesc')){ev.preventDefault();
+    if(ev.target.id==='fAmount')$('#fDesc').focus();else saveForm()}
+  if(ev.key==='Escape')closeSheet();
+});
+$('#scrim').addEventListener('click',closeSheet);
+$('#importFile').addEventListener('change',e=>{const f=e.target.files[0];if(f)importFile(f);e.target.value=''});
+
+/* ---------- старт ---------- */
+(async()=>{
+  S=await loadState()||freshState();
+  S.learned||(S.learned={}); S.categories?.length||(S.categories=DEFAULT_CATS.map(c=>({...c})));
+  if(!S.categories.some(c=>c.id==='other'))S.categories.push({id:'other',name:'Другое',emoji:'📦'});
+  render();
+  if(S.expenses.length)askPersist().then(()=>ui.view==='settings'&&render());
+  if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+})();
+</script>
+</body>
+</html>
