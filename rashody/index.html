@@ -523,6 +523,24 @@ html[data-skin="official"] .tips .info .ic{background:var(--accent-soft)}
 .ratebox .inp{width:110px;padding:8px 10px}
 .subs-row .acts{gap:6px}
 .subs-row .acts button{width:auto;padding:0 10px;font-size:13px;font-weight:650}
+/* кружок валюты с бегущим кольцом */
+.curbtn{position:relative;flex:none;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;align-self:center;
+  font-size:20px;font-weight:750;color:var(--accent-strong);isolation:isolate}
+.curbtn::before{content:"";position:absolute;inset:0;border-radius:50%;z-index:-2;
+  background:conic-gradient(from var(--ang,0deg),#ffb03a,#ff6a4d,#ff4f8b,#7b5cff,#4dd2ff,#ffb03a);animation:spin 2.4s linear infinite}
+.curbtn::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--card-solid);z-index:-1}
+.curbtn.fx{color:#fff}.curbtn.fx::after{background:linear-gradient(135deg,#ff9a3c,#ff6a4d)}
+.curbtn:active{transform:scale(.92)}
+html[data-skin="official"] .curbtn::before{background:conic-gradient(from var(--ang,0deg),#0d4cd3,#4d8bff,#ee3f58,#0d4cd3)}
+html[data-skin="official"] .curbtn.fx::after{background:var(--accent)}
+.curpick{margin:0 0 12px;padding:12px;border-radius:18px;background:var(--bg);border:1px solid var(--ring);animation:up .3s cubic-bezier(.2,.8,.2,1)}
+.curpick .ttl{font-size:14px;color:var(--ink2);margin:0 2px 10px}
+.curgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.curgrid button{aspect-ratio:1;border-radius:14px;background:var(--card-solid);border:2px solid var(--ring);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:4px;transition:transform .12s,border-color .15s}
+.curgrid button:active{transform:scale(.92)}
+.curgrid button.on{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
+.curgrid .fl{font-size:20px;line-height:1}.curgrid .sy{font-size:15px;font-weight:750}.curgrid .nm{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;max-width:100%}
+.voicetip{margin:8px 0 0;padding:10px 12px;border-radius:14px;font-size:14px;line-height:1.35;background:color-mix(in srgb,var(--accent) 14%,var(--card-solid));border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);animation:up .3s ease}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
@@ -565,10 +583,12 @@ html[data-skin="official"] .tips .info .ic{background:var(--accent-soft)}
   <div class="grab"></div>
   <div class="sheet-h"><h3 id="sTitle">Новая трата</h3><button class="btn sm" data-close>Закрыть</button></div>
   <div class="seg" id="fType"><button data-type="exp" class="on">Расход</button><button data-type="inc">Доход</button></div>
-  <div class="amount-wrap"><input class="amount-in num" id="fAmount" inputmode="decimal" placeholder="0" autocomplete="off"><select class="cursel" id="fCur" aria-label="Валюта"></select><button class="btn qrbtn" id="qrBtn" aria-label="Сканировать QR-код чека">📷 Чек</button></div>
+  <div class="amount-wrap"><input class="amount-in num" id="fAmount" inputmode="decimal" placeholder="0" autocomplete="off"><button class="curbtn" id="curBtn" aria-label="Выбрать валюту">₽</button><select id="fCur" hidden aria-hidden="true"></select><button class="btn qrbtn" id="qrBtn" aria-label="Сканировать QR-код чека">📷 Чек</button></div>
+  <div class="curpick" id="curPick" hidden><div class="ttl">💱 Можно выбрать валюту, в которой ты потратил или получил денежки — пересчитаю в рубли по курсу</div><div class="curgrid" id="curGrid"></div></div>
   <div class="ratebox" id="fRate" hidden>Курс: 1 <span id="fRateCur"></span> = <input class="inp num" id="fRateIn" inputmode="decimal" placeholder="курс"> ₽ <button class="btn ghost small" id="fRateCbr" style="padding:0 4px">курс ЦБ</button> <b id="fRateRub"></b></div>
   <div class="hint">Можно складывать: 250+180</div>
   <div class="row2" style="grid-template-columns:1fr auto"><input class="inp" id="fDesc" placeholder="На что? Булочка, такси, капли в нос…" autocomplete="off" enterkeyhint="done"><button class="btn" id="micBtn" aria-label="Сказать голосом">🎙️</button></div>
+  <div class="voicetip" id="voiceTip" hidden></div>
   <div class="guess" id="fGuess"></div>
   <button class="btn ghost" id="catToggle" style="margin-top:2px">Выбрать категорию вручную ▾</button>
   <div class="chips" id="fCats" hidden></div>
@@ -708,7 +728,7 @@ const M_DAT=['январю','февралю','марту','апрелю','маю
 const WD=['вс','пн','вт','ср','чт','пт','сб'];
 const DAY=864e5;
 const DEBT_CATS=new Set(['loans','mortgage','installments']);
-const APP_VERSION='1.9.0';
+const APP_VERSION='1.9.1';
 const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------- утилиты ---------- */
@@ -769,16 +789,30 @@ function parseSpoken(text){
       else if(any&&isThousand(w)){total+=(cur||1)*1000;cur=0;used.add(i)}
       else if(any&&!['и'].includes(w))break}
     amount=total+cur}
-  const desc=toks.filter((_,i)=>!used.has(i)).join(' ').replace(/\s+/g,' ').trim();
+  const desc=toks.filter((_,i)=>!used.has(i)).join(' ').replace(/[—–-]+/g,' ').replace(/\s+/g,' ').trim().replace(/\s+(за|на|по|в)$/,'').replace(/[.,!?:;]+$/,'');
   return {amount:Math.round(amount*100)/100,desc:desc?desc[0].toUpperCase()+desc.slice(1):''};
 }
 const SpeechRec=window.SpeechRecognition||window.webkitSpeechRecognition;
 let voiceRec=null;
+function voiceTip(){ // первые 5 нажатий — подсказка, как говорить
+  const n=S.micTips||0; if(n>=5)return; S.micTips=n+1; save();
+  const el=$('#voiceTip'); el.hidden=false;
+  el.innerHTML=`🎙️ <b>Говори по одной покупке</b>: сначала что купил, потом сумму.<br>Например: «<b>булочка — 250 рублей</b>». Несколько покупок за раз я не разберу.${SpeechRec?'':'<br>Здесь работает микрофон на клавиатуре — продиктуй так же, сумму я достану сам.'}`;
+  clearTimeout(voiceTip.t); voiceTip.t=setTimeout(()=>{el.hidden=true},9000);
+}
+// Сумма, продиктованная в описание («булочка 250 рублей» через микрофон клавиатуры), — переносим в поле суммы
+function amountFromDesc(){
+  if(ui.fType!=='exp'&&ui.fType!=='inc')return false;
+  const d=$('#fDesc').value; if(!d||parseAmount($('#fAmount').value)>0)return false;
+  const p=parseSpoken(d); if(!(p.amount>0))return false;
+  $('#fAmount').value=String(p.amount).replace('.',','); $('#fDesc').value=p.desc; $('#fDesc').dispatchEvent(new Event('input',{bubbles:true})); syncRate(); return true;
+}
 function startVoice(){
-  if(!SpeechRec){toast('Тут голосовой ввод недоступен — нажми 🎙️ на клавиатуре телефона');return}
+  voiceTip();
+  if(!SpeechRec){if((S.micTips||0)>5)toast('Нажми 🎙️ на клавиатуре и скажи: «булочка — 250 рублей»');$('#fDesc').focus();return}
   if(voiceRec){voiceRec.stop();return}
   const r=new SpeechRec(); voiceRec=r; r.lang='ru-RU'; r.interimResults=true; r.maxAlternatives=1;
-  $('#micBtn').classList.add('rec'); $('#fDesc').placeholder='Слушаю… например, «кофе двести пятьдесят»';
+  $('#micBtn').classList.add('rec'); $('#fDesc').placeholder='Слушаю… скажи: «булочка — 250 рублей»';
   r.onresult=e=>{const txt=[...e.results].map(x=>x[0].transcript).join(' '), p=parseSpoken(txt);
     if(p.amount)$('#fAmount').value=String(p.amount).replace('.',',');
     $('#fDesc').value=p.desc; $('#fDesc').dispatchEvent(new Event('input',{bubbles:true}))};
@@ -791,10 +825,20 @@ function startVoice(){
 const CURS=[['RUB','₽'],['USD','$'],['EUR','€'],['TRY','₺'],['KZT','₸'],['AED','AED'],['THB','฿'],['CNY','¥'],['GEL','₾'],['AMD','֏'],
   ['UZS','сум'],['KGS','сом'],['BYN','Br'],['GBP','£'],['VND','₫'],['EGP','E£'],['IDR','Rp'],['JPY','JP¥']];
 const curSym=c=>(CURS.find(x=>x[0]===c)||[c,c])[1];
+const CUR_INFO={RUB:['🇷🇺','Рубль'],USD:['🇺🇸','Доллар'],EUR:['🇪🇺','Евро'],TRY:['🇹🇷','Лира'],KZT:['🇰🇿','Тенге'],AED:['🇦🇪','Дирхам'],THB:['🇹🇭','Бат'],
+  CNY:['🇨🇳','Юань'],GEL:['🇬🇪','Лари'],AMD:['🇦🇲','Драм'],UZS:['🇺🇿','Сум'],KGS:['🇰🇬','Сом'],BYN:['🇧🇾','Бел. рубль'],GBP:['🇬🇧','Фунт'],
+  VND:['🇻🇳','Донг'],EGP:['🇪🇬','Фунт ег.'],IDR:['🇮🇩','Рупия'],JPY:['🇯🇵','Иена']};
+function renderCurPick(){
+  const cur=$('#fCur').value;
+  $('#curGrid').innerHTML=CURS.map(([c,sy])=>`<button data-cur="${c}" class="${c===cur?'on':''}"><span class="fl">${CUR_INFO[c]?.[0]||'💱'}</span><span class="sy">${sy}</span><span class="nm">${CUR_INFO[c]?.[1]||c}</span></button>`).join('');
+}
+function setCur(c){$('#fCur').value=c;$('#fCur').dispatchEvent(new Event('change',{bubbles:true}))}
 const fmtCur=(v,c)=>`${new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(v)} ${curSym(c)}`;
-function fillCurSelect(cur){$('#fCur').innerHTML=CURS.map(([c,sy])=>`<option value="${c}"${c===cur?' selected':''}>${sy}</option>`).join('');syncRate()}
+function fillCurSelect(cur){$('#fCur').innerHTML=CURS.map(([c,sy])=>`<option value="${c}"${c===cur?' selected':''}>${sy}</option>`).join('');$('#curPick').hidden=true;syncRate()}
 function syncRate(){
-  const c=$('#fCur').value, rub=c==='RUB'; $('#fRate').hidden=rub; if(rub)return;
+  const c=$('#fCur').value, rub=c==='RUB'; $('#fRate').hidden=rub;
+  const b=$('#curBtn'); b.textContent=curSym(c).length>2?c:curSym(c); b.classList.toggle('fx',!rub);
+  if(rub)return;
   $('#fRateCur').textContent=curSym(c);
   if(!$('#fRateIn').value&&S.rates?.[c])$('#fRateIn').value=String(S.rates[c]).replace('.',',');
   const a=parseAmount($('#fAmount').value), r=parseAmount($('#fRateIn').value);
@@ -2158,6 +2202,7 @@ function renderChips(){
     <div class="grp">Обязательные</div>${S.categories.filter(c=>c.kind==='fixed').map(chip).join('')}`;
 }
 function saveForm(){
+  amountFromDesc();
   let amount=parseAmount($('#fAmount').value);
   if(!(amount>0)){toast('Введи сумму');haptic('warn');$('#fAmount').focus();return}
   const fx=curConvert(amount); if(!fx)return; amount=fx.amount;
@@ -2456,6 +2501,7 @@ function maybeRecap(done){
 }
 /* ---------- что нового ---------- */
 const CHANGELOG=[
+  {v:'1.9.1',items:['🎙️ Подсказка, как говорить: «булочка — 250 рублей», по одной покупке','🔢 Сумма теперь достаётся, даже если продиктовать через микрофон клавиатуры','💱 Валюта — в кружочке с бегущим кольцом и своим красивым меню с флагами']},
   {v:'1.9.0',items:['🎬 Итоги месяца в формате сторис — с шутками по твоим тратам. Покажу в последний день месяца, а ещё есть кнопка на карточке месяца','📅 Календарь в «Истории»: дни в норме, близко к лимиту и за пределами','🎙️ Голосовой ввод: скажи «кофе двести пятьдесят»','🔁 Сам найду регулярные платежи и предложу добавить их в обязательные («Советы»)','🏦 Импорт выписки из банка (CSV): ⚙️ → Резервная копия','💱 Траты в другой валюте с курсом ЦБ — для поездок']},
   {v:'1.8.2',items:['📜 «Что нового» показывает всё, что ты пропустил, и два входа подряд — чтобы точно не потерялось']},
   {v:'1.8.1',items:['🌗 Подсказка: обе темы — «Спокойная» и «Официальная» — бывают светлыми и тёмными, как тема телефона']},
@@ -2642,6 +2688,8 @@ document.addEventListener('click',async ev=>{
   if(t.dataset.calday){ui.calDay=ui.calDay===t.dataset.calday?null:t.dataset.calday;haptic();keepScroll(renderHistory);return}
   if(t.id==='qrBtn'){openScan();return}
   if(t.id==='micBtn'){startVoice();return}
+  if(t.id==='curBtn'){const pk=$('#curPick');pk.hidden=!pk.hidden;if(!pk.hidden)renderCurPick();haptic();return}
+  if(t.dataset.cur){setCur(t.dataset.cur);$('#curPick').hidden=true;haptic('success');if(t.dataset.cur!=='RUB')setTimeout(()=>$('#fRateIn').value?$('#fAmount').focus():$('#fRateIn').focus(),50);return}
   if(t.id==='fRateCbr'){fetchCbr();return}
   if(t.dataset.subadd){const r=detectRecurring().find(x=>x.n===t.dataset.subadd);if(!r)return;
     const c=isFixed(r.cat)?r.cat:'subs', p={id:uid(),name:r.desc,amount:r.amount,day:Math.min(28,r.day),cat:c,freq:'month'};S.planned.push(p);
@@ -2796,6 +2844,7 @@ document.addEventListener('input',ev=>{
 });
 document.addEventListener('change',ev=>{
   if(ev.target.id==='fCur')syncRate();
+  if(ev.target.id==='fDesc'&&amountFromDesc())haptic('success');
   if(ev.target.dataset?.bind==='name')loveCheck();
   if(ev.target.id==='pFreq'||ev.target.id==='pCat')syncPlanForm();
   const b=ev.target.dataset?.bind||'';

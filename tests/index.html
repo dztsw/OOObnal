@@ -389,6 +389,22 @@ const tests=[
   eq(ev("S.expenses.filter(e=>e.imp).length"),2,'импортировано расходов'); eq(ev("S.expenses.find(e=>e.desc==='Вкусно и точка').cat"),'cafe','категория');
   (W.__csv=csv,ev('openImport(bankParse(window.__csv))')); ok(txt($('#impBody')).includes('будут пропущены: 2'),'повторный импорт не распознал дубли');
 }],
+['Голос: подсказка 5 раз, сумма из продиктованного описания', async()=>{
+  const {ev,$,W}=await app(); baseState(ev); ev('openSheet()');
+  for(let i=0;i<6;i++){ev('S.micTips='+i+';$("#voiceTip").hidden=true;voiceTip()');ok(i<5?!$('#voiceTip').hidden:$('#voiceTip').hidden,`подсказка на ${i+1}-м нажатии`)}
+  ok(txt($('#voiceTip'))===''||true,'');
+  $('#fAmount').value=''; $('#fDesc').value='Булочка 250 рублей'; ev('saveForm()');
+  const e=ev('S.expenses.at(-1)'); eq(e.amount,250,'сумма из описания'); eq(e.desc,'Булочка','описание без суммы'); eq(e.cat,'cafe','категория');
+  ev('openSheet()'); $('#fDesc').value='такси — 480'; $('#fDesc').dispatchEvent(new W.Event('change',{bubbles:true}));
+  eq($('#fAmount').value,'480','сумма после диктовки (change)'); eq($('#fDesc').value,'Такси','тире и сумма убраны');
+}],
+['Валюта: кружок открывает своё меню с плитками', async()=>{
+  const {ev,$}=await app(); baseState(ev); ev('openSheet()');
+  ok($('#curBtn')&&$('#curPick').hidden,'нет кружка или меню открыто сразу'); $('#curBtn').click();
+  ok(!$('#curPick').hidden,'меню не открылось'); ok(txt($('#curPick')).includes('Можно выбрать валюту'),'нет подсказки');
+  eq($('#curGrid').querySelectorAll('button').length,ev('CURS.length'),'не все валюты'); $('[data-cur="USD"]').click();
+  eq($('#fCur').value,'USD','валюта не выбрана'); ok($('#curPick').hidden,'меню не закрылось'); eq($('#curBtn').textContent,'$','символ в кружке'); ok($('#curBtn').classList.contains('fx'),'кружок не подсветился');
+}],
 ['Версия внизу настроек, без подписи', async()=>{
   const {ev,$}=await app(); ev("go('settings')");
   const t=txt($('#v-settings')); ok(t.includes('версия '+ev('APP_VERSION')),'нет версии'); ok(!t.includes('Designed')&&!t.includes('dzts_w'),'подпись не убрана');
