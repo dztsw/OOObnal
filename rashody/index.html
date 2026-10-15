@@ -541,6 +541,20 @@ html[data-skin="official"] .curbtn.fx::after{background:var(--accent)}
 .curgrid button.on{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
 .curgrid .fl{font-size:20px;line-height:1}.curgrid .sy{font-size:15px;font-weight:750}.curgrid .nm{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;max-width:100%}
 .voicetip{margin:8px 0 0;padding:10px 12px;border-radius:14px;font-size:14px;line-height:1.35;background:color-mix(in srgb,var(--accent) 14%,var(--card-solid));border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);animation:up .3s ease}
+/* кружки историй, как в Instagram */
+.hl{display:flex;gap:14px;overflow-x:auto;margin:0 -16px 12px;padding:2px 16px 4px;scrollbar-width:none}
+.hl::-webkit-scrollbar{display:none}
+.hl button{flex:none;display:flex;flex-direction:column;align-items:center;gap:5px;width:70px}
+.hl .ring{position:relative;width:64px;height:64px;border-radius:50%;padding:3px;background:conic-gradient(#ffb03a,#ff6a4d,#ff4f8b,#7b5cff,#ffb03a)}
+.hl .seen .ring{background:var(--base)}
+.hl .ring>span{width:100%;height:100%;border-radius:50%;display:grid;place-items:center;font-size:28px;background:var(--card-solid);border:3px solid var(--bg)}
+.hl .lbl{font-size:11.5px;color:var(--ink2);text-align:center;line-height:1.2;max-width:70px}
+.hl .beat{display:inline-block;animation:beat 1.3s ease-in-out infinite}
+@keyframes beat{0%,100%{transform:scale(1)}15%{transform:scale(1.22)}30%{transform:scale(1)}45%{transform:scale(1.14)}}
+html[data-skin="official"] .hl .ring{background:conic-gradient(#0d4cd3,#4d8bff,#ee3f58,#0d4cd3)}
+html[data-skin="official"] .hl .seen .ring{background:var(--base)}
+.recap .t.lg{font-size:24px;font-weight:750}
+.recap a.btn{text-decoration:none;display:flex}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
@@ -694,6 +708,22 @@ html[data-skin="official"] .curbtn.fx::after{background:var(--accent)}
 </div>
 <!-- итоги месяца -->
 <div class="recap" id="recap" hidden></div>
+<!-- шторка: пришла ли зарплата -->
+<div class="sheet" id="paysheet" role="dialog" aria-modal="true">
+  <div class="grab"></div>
+  <div style="text-align:center;padding:4px 4px 10px"><div style="font-size:46px">💼</div>
+    <h3 style="margin:4px 0 6px;font-size:21px" id="payT">Зарплата пришла?</h3><div class="sec" id="payS"></div></div>
+  <div class="btns" id="payBtns">
+    <button class="btn primary block" data-act="payOk">✅ Да, всё пришло</button>
+    <button class="btn block" data-act="payDiff">✏️ Пришло другое</button>
+    <button class="btn block" data-act="payWait">⏳ Ещё не пришла</button>
+  </div>
+  <div id="payDiffBox" hidden>
+    <div class="flabel">Сколько пришло на самом деле</div>
+    <div class="amount-wrap"><input class="amount-in num" id="payAmt" inputmode="decimal" placeholder="0"><span>₽</span></div>
+    <button class="btn primary block" data-act="paySave">Пересчитать</button>
+  </div>
+</div>
 <!-- шторка: что нового -->
 <div class="sheet" id="wsheet" role="dialog" aria-modal="true">
   <div class="grab"></div>
@@ -728,7 +758,7 @@ const M_DAT=['январю','февралю','марту','апрелю','маю
 const WD=['вс','пн','вт','ср','чт','пт','сб'];
 const DAY=864e5;
 const DEBT_CATS=new Set(['loans','mortgage','installments']);
-const APP_VERSION='1.9.1';
+const APP_VERSION='1.10.0';
 const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------- утилиты ---------- */
@@ -1354,7 +1384,7 @@ function accBalance(a){
   if(a.type==='goal'){for(const e of schedEvents(goalShares(),a.ts))b+=(+a.monthly||0)*e.val}
   else{
     if(a.type==='main'){ // зарплата приходит сюда, отчисления в цели уходят отсюда
-      for(const e of schedEvents(S.incomes.filter(i=>i.amount>0&&i.day>=1).map(i=>({d:i.day,val:i.amount})),a.ts))b+=e.val;
+      for(const i of S.incomes.filter(i=>i.amount>0&&i.day>=1))for(const e of schedEvents([{d:i.day,val:i.amount}],a.ts))b+=incAmt(i,e.d);
       for(const g of goals())for(const e of schedEvents(goalShares(),Math.max(a.ts||0,g.ts||0)))b-=(+g.monthly||0)*e.val;
     }
     b+=sum(S.extra.filter(x=>mine(x)&&after(x)));
@@ -1397,6 +1427,9 @@ function saveAdvice(){
 }
 
 /* ---------- период до зарплаты ---------- */
+// Сколько реально пришло в конкретную выплату: подтверждённая сумма, 0 — если ещё не пришла, иначе по плану
+const payKey=(i,d)=>`${i.id}|${ymd(d)}`;
+function incAmt(i,d){const r=S.payActual?.[payKey(i,d)];return r?.status==='diff'?r.amount:r?.status==='wait'?0:i.amount}
 // Границы периода между выплатами, в который попадает дата t
 function bounds(t){
   const inc=S.incomes.filter(i=>i.amount>0&&i.day>=1&&i.day<=31); if(!inc.length)return null;
@@ -1405,7 +1438,7 @@ function bounds(t){
   pts.sort((a,b)=>a.d-b.d);
   let start=null,next=null; for(const p of pts){if(p.d<=t)start=p.d;else if(!next)next=p.d}
   return {start,next,
-    income:pts.filter(p=>+p.d===+start).reduce((s,p)=>s+p.i.amount,0),
+    income:pts.filter(p=>+p.d===+start).reduce((s,p)=>s+incAmt(p.i,p.d),0),
     startNames:pts.filter(p=>+p.d===+start).map(p=>p.i.name||'Доход'),
     nextNames:pts.filter(p=>+p.d===+next).map(p=>p.i.name||'Доход')};
 }
@@ -1669,6 +1702,10 @@ function payCard(){
     <div class="progress" role="img" aria-label="Использовано ${Math.round(used*100)}% денег периода"><i style="width:${Math.min(100,Math.max(0,used*100))}%"></i></div>
     <div class="budget-row"><span>свободно до зарплаты <b>${money(Math.max(0,P.free))}</b></span><span>день ${passed} из ${periodDays}</span></div>
     ${P.mode==='balance'?`<div class="budget-row" style="margin-top:4px"><span>💳 считаю от денег на счетах: <b>${money(P.bal)}</b></span></div>`:''}
+    ${(()=>{const st=S.incomes.filter(i=>i.amount>0&&+dateOnDay(P.start.getFullYear(),P.start.getMonth(),i.day)===+P.start).map(i=>({i,r:S.payActual?.[payKey(i,P.start)]}));
+      const w=st.filter(x=>x.r?.status==='wait'), df=st.filter(x=>x.r?.status==='diff');
+      return w.length?`<button class="piggy" data-act="payAsk"><span>⏳</span><span>${esc(w.map(x=>x.i.name).join(', '))} ещё не пришла — считаю без неё. Пришла? Нажми, чтобы отметить</span></button>`
+        :df.length?`<div class="budget-row" style="margin-top:4px"><span>✏️ ${esc(df.map(x=>x.i.name).join(', '))}: пришло ${money(df.reduce((s,x)=>s+x.r.amount,0))} вместо ${money(df.reduce((s,x)=>s+x.i.amount,0))}</span></div>`:''})()}
     ${P.mode!=='balance'&&(P.extraSum||P.carry)?`<div class="budget-row" style="margin-top:4px">${P.extraSum?`<span>💰 доп. доходы <b>+${money(P.extraSum)}</b></span>`:''}${P.carry?`<span>↪ с прошлого периода <b>+${money(P.carry)}</b></span>`:''}</div>`:''}
     ${piggy}
     <details class="calc"><summary>Как считается ▾</summary><table>${P.mode==='balance'?`
@@ -1818,6 +1855,7 @@ function renderHome(){
   const P=cur?period():null;
   $('#v-home').innerHTML=`
     ${cur?`<div class="hello"><span>${greeting()}</span>${P&&P.todayLeft>=0&&P.free>=0?'<span>в рамках лимита ✨</span>':''}</div>`:''}
+    ${cur?highlights():''}
     ${welcomeCard()}
     ${cur&&!S.accounts.length?balanceCard():''}
     ${backupDue()?`<div class="card banner"><span class="small">💾 Прошла неделя — сохрани резервную копию</span><span style="display:flex;gap:6px"><button class="btn" data-act="snooze">Позже</button><button class="btn" data-act="backup">Сохранить</button></span></div>`:''}
@@ -2442,20 +2480,20 @@ function recapSlides(k){
   return out;
 }
 let recapState=null;
-function openRecap(k,done,demo){
+function openRecap(k,done,demo,opts={}){
   const slides=demo||recapSlides(k); if(!slides.length){if(done)done();return false}
-  recapState={k,slides,i:0,done,demo:!!demo};
+  recapState={k,slides,i:0,done,demo:!!demo,closeText:opts.closeText,grads:opts.grads};
   $('#recap').hidden=false; renderRecapSlide(); haptic('success'); return true;
 }
 function renderRecapSlide(){
   const r=recapState, sl=r.slides[r.i], el=$('#recap');
   clearTimeout(r.t);
-  el.style.background=GRADS[r.i%GRADS.length];
+  el.style.background=(r.grads||GRADS)[r.i%(r.grads||GRADS).length];
   el.innerHTML=`<div class="bars">${r.slides.map((_,i)=>`<i class="${i<r.i?'done':i===r.i?'cur':''}"><b></b></i>`).join('')}</div>
     <button class="x" data-recapx aria-label="Закрыть">✕</button>
     <div class="zone l" data-rnav="-1"></div><div class="zone r" data-rnav="1"></div>
-    <div class="slide"><div class="em">${sl.em}</div><div class="k">${sl.k}</div><div class="big">${sl.big}</div><div class="t">${sl.t}</div>${sl.meme?`<div class="meme">${sl.meme}</div>`:''}</div>
-    ${sl.last?`<div class="acts">${r.demo?'':'<button class="btn block" data-recapshare>📤 Поделиться итогами</button>'}<button class="btn block${r.demo?'':' alt'}" data-recapx>${r.demo?'Понятно, жду свои итоги 👍':'Закрыть'}</button></div>`:''}`;
+    <div class="slide"><div class="em">${sl.em}</div><div class="k">${sl.k}</div><div class="big">${sl.big}</div><div class="t${sl.lg?' lg':''}">${sl.t}</div>${sl.meme?`<div class="meme">${sl.meme}</div>`:''}</div>
+    ${sl.last?`<div class="acts">${sl.link?`<a class="btn block" href="${sl.link.href}" target="_blank" rel="noopener">${sl.link.text}</a>`:r.demo?'':'<button class="btn block" data-recapshare>📤 Поделиться итогами</button>'}<button class="btn block${r.demo&&!sl.link?'':' alt'}" data-recapx>${r.closeText||(r.demo?'Понятно, жду свои итоги 👍':'Закрыть')}</button></div>`:''}`;
   if(!sl.last)r.t=setTimeout(()=>recapNav(1),6500);
 }
 function recapNav(d){const r=recapState;if(!r)return;const n=r.i+d;if(n<0)return;if(n>=r.slides.length)return closeRecap();r.i=n;haptic();renderRecapSlide()}
@@ -2499,8 +2537,42 @@ function maybeRecap(done){
   if(!S.recapDemoSeen){S.recapDemoSeen=true;save();return openRecap(curK,done,demoSlides())}
   return false;
 }
+/* ---------- пришла ли зарплата ---------- */
+// В день выплаты спрашиваем, пришла ли она и та ли сумма; если «ещё нет» — спрашиваем каждый день
+function payDueList(){
+  const b=bounds(sod(new Date())); if(!b)return [];
+  const T=todayStr(), created=ymd(new Date(S.created||Date.now()));
+  return S.incomes.filter(i=>i.amount>0&&i.day>=1).flatMap(i=>occurrences(i.day,b.start,0,0).filter(d=>+d===+b.start).map(d=>({i,d})))
+    .filter(({i,d})=>{const r=S.payActual?.[payKey(i,d)];
+      if(ymd(d)<created)return false; // выплаты до начала пользования приложением не спрашиваем
+      return !r||(r.status==='wait'&&S.payAsked!==T)});
+}
+let payQ=null;
+function maybeAskPay(done){
+  const list=payDueList(); if(!list.length)return false;
+  payQ={list,done}; S.payAsked=todayStr(); save();
+  const waiting=list.some(({i,d})=>S.payActual?.[payKey(i,d)]?.status==='wait');
+  const names=list.map(({i})=>`${i.name||'Зарплата'} — ${money(i.amount)}`).join(', ');
+  $('#payT').textContent=waiting?'Зарплата уже пришла?':ymd(list[0].d)===todayStr()?'Сегодня зарплата! Пришла?':'Зарплата пришла?';
+  $('#payS').innerHTML=`По плану ${fmtD(list[0].d)}: <b>${esc(names)}</b>.<br>Сумма та, что ты указал(а)?`;
+  $('#payBtns').hidden=false; $('#payDiffBox').hidden=true; $('#payAmt').value='';
+  openPanel('#paysheet'); return true;
+}
+function payAnswer(status,amount){
+  if(!payQ)return; S.payActual||={};
+  const plan=payQ.list.reduce((s,{i})=>s+i.amount,0);
+  payQ.list.forEach(({i,d},k)=>{
+    // фактическую сумму распределяем по выплатам этого дня пропорционально плану
+    S.payActual[payKey(i,d)]=status==='diff'?{status,amount:Math.round(amount*i.amount/plan),ts:Date.now()}:{status,ts:Date.now()}});
+  const done=payQ.done; payQ=null; save(); closeSheet(); render();
+  if(status==='ok'){haptic('success');confettiAt($('#fab'));toast('💼 Отлично! Работаем как обычно')}
+  else if(status==='diff'){haptic('success');toast(`Пересчитал от ${money(amount)} — лимит и накопления обновлены`)}
+  else {haptic();toast('Хорошо, пока считаю без этой выплаты. Спрошу завтра')}
+  if(done)setTimeout(done,350);
+}
 /* ---------- что нового ---------- */
 const CHANGELOG=[
+  {v:'1.10.0',items:['📖 «Что нового» теперь в формате сторис — по одному пункту на слайд','⭕ Кружки сверху на главной: обновление, итоги месяца и «спасибо» с контактами для идей','💼 В день зарплаты спрошу, пришла ли она и та ли сумма. Пришло другое — пересчитаю лимит и накопления. Ещё не пришла — буду спрашивать каждый день и пока не учитывать её']},
   {v:'1.9.1',items:['🎙️ Подсказка, как говорить: «булочка — 250 рублей», по одной покупке','🔢 Сумма теперь достаётся, даже если продиктовать через микрофон клавиатуры','💱 Валюта — в кружочке с бегущим кольцом и своим красивым меню с флагами']},
   {v:'1.9.0',items:['🎬 Итоги месяца в формате сторис — с шутками по твоим тратам. Покажу в последний день месяца, а ещё есть кнопка на карточке месяца','📅 Календарь в «Истории»: дни в норме, близко к лимиту и за пределами','🎙️ Голосовой ввод: скажи «кофе двести пятьдесят»','🔁 Сам найду регулярные платежи и предложу добавить их в обязательные («Советы»)','🏦 Импорт выписки из банка (CSV): ⚙️ → Резервная копия','💱 Траты в другой валюте с курсом ЦБ — для поездок']},
   {v:'1.8.2',items:['📜 «Что нового» показывает всё, что ты пропустил, и два входа подряд — чтобы точно не потерялось']},
@@ -2513,21 +2585,54 @@ const CHANGELOG=[
 ];
 const cmpV=(a,b)=>{const x=a.split('.').map(Number),y=b.split('.').map(Number);for(let i=0;i<3;i++){if((x[i]||0)!==(y[i]||0))return (x[i]||0)-(y[i]||0)}return 0};
 // Что нового: каждому показываем всё, что он пропустил с прошлого раза, и не один, а два входа подряд
+// Что нового: каждому показываем всё, что он пропустил с прошлого раза, два входа подряд, в формате сторис
+function newsSlides(list){
+  const out=[{em:'✨',k:'Обновление',big:`Версия ${APP_VERSION}`,t:list.length>1?`Пропущено обновлений: ${list.length}. Коротко расскажу, что появилось`:'Коротко расскажу, что появилось',meme:'Касание справа — дальше 👉'}];
+  for(const c of list)for(const it of c.items){
+    const m=it.match(/^(\p{Extended_Pictographic}[️‍\p{Extended_Pictographic}]*)\s*/u);
+    out.push({em:m?m[1]:'✨',k:`Новое в ${c.v}`,big:'',t:esc(m?it.slice(m[0].length):it),lg:true});
+  }
+  out.push({...thanksSlides().at(-1)});
+  return out;
+}
+function thanksSlides(){
+  return [
+    {em:'<span class="beat">💛</span>',k:'От разработчика',big:'Спасибо, что ты с нами!',t:'Приложение регулярно дорабатывается — и многие функции появились именно благодаря вашим идеям.',meme:'Каждый отзыв делает «Расходы» удобнее 🙌'},
+    {em:'💬',k:'Есть идея или что-то неудобно?',big:'Напиши мне',t:'Буду рад предложениям, замечаниям и найденным ошибкам — читаю каждое сообщение. Telegram: @dzts_w',
+      link:{href:'https://t.me/dzts_w',text:'✈️ Написать в Telegram'},last:true},
+  ];
+}
+function lastNews(){ // для кружка «Обновление»: свежая версия (или всё пропущенное, если человек ещё не досмотрел)
+  const from=S.wnPending?.from; return from?CHANGELOG.filter(c=>cmpV(c.v,from)>0):CHANGELOG.slice(0,1);
+}
 function checkChangelog(){
   const seen=S.seenVersion||'1.6.1'; // у тех, кто пользовался до появления этого окна, номер ещё не записан
   if(cmpV(seen,APP_VERSION)<0){
     const prev=S.wnPending?.from; // если прошлое «что нового» ещё не досмотрели — сохраняем более раннюю точку
     S.wnPending={from:prev&&cmpV(prev,seen)<0?prev:seen,left:2};
-    S.seenVersion=APP_VERSION;
+    S.seenVersion=APP_VERSION; S.hlSeen={...(S.hlSeen||{}),news:null};
   }
   const wp=S.wnPending;
   if(!wp||!(wp.left>0)){S.wnPending=null;save();return false}
   const list=CHANGELOG.filter(c=>cmpV(c.v,wp.from)>0);
-  wp.left--; if(wp.left<=0)S.wnPending=null; save();
+  wp.left--; if(wp.left<=0){S.lastNewsFrom=wp.from;S.wnPending=null} save();
   if(!list.length)return false;
-  $('#wnVer').textContent=list.length>1?`пропущено обновлений: ${list.length} · сейчас ${APP_VERSION}`:`версия ${APP_VERSION}`;
-  $('#wnList').innerHTML=list.map((c,i)=>`${list.length>1?`<div class="grp">${i===0?'Сейчас':'Пропущено'} · ${c.v}</div>`:''}<ul class="tips" style="margin:6px 0 12px">${c.items.map(x=>`<li class="info"><span>${esc(x)}</span></li>`).join('')}</ul>`).join('');
-  openPanel('#wsheet'); return true;
+  openStory('news',newsSlides(list),nextStartup); return true;
+}
+// открыть историю и отметить кружок просмотренным
+function openStory(key,slides,done){
+  S.hlSeen={...(S.hlSeen||{}),[key]:key==='news'?APP_VERSION:key==='recap'?mkey(new Date()):1}; save();
+  if(ui.view==='home')keepScroll(renderHome);
+  return openRecap(null,done,slides,{closeText:key==='news'?'Класс! 🚀':key==='thanks'?'Закрыть':undefined});
+}
+function highlights(){
+  const prevK=shiftMonth(mkey(new Date()),-1), hasRecap=inMonth(prevK).filter(e=>!e.debtId).length>=5, h=S.hlSeen||{};
+  const items=[
+    {key:'news',em:'✨',lbl:'Обновление',seen:h.news===APP_VERSION},
+    {key:'recap',em:'🎬',lbl:hasRecap?`Итоги ${M_GEN[mIdx(prevK)]}`:'Итоги месяца',seen:h.recap===mkey(new Date())},
+    {key:'thanks',em:'<span class="beat">💛</span>',lbl:'Спасибо',seen:!!h.thanks},
+  ];
+  return `<div class="hl">${items.map(x=>`<button data-hl="${x.key}" class="${x.seen?'seen':''}"><span class="ring"><span>${x.em}</span></span><span class="lbl">${x.lbl}</span></button>`).join('')}</div>`;
 }
 // Быстрый старт: по настройке или по ссылке ?add (можно ?add&a=250&d=кофе — сумма и описание)
 function quickOpen(){
@@ -2543,6 +2648,7 @@ function quickOpen(){
 const startupQ=[]; const nextStartup=()=>{const f=startupQ.shift();if(f)f()};
 function runStartup(){
   startupQ.push(()=>{if(!checkChangelog())nextStartup()});
+  startupQ.push(()=>{if(!maybeAskPay(nextStartup))nextStartup()});
   startupQ.push(()=>{if(!maybeRecap(nextStartup))nextStartup()});
   startupQ.push(()=>loveCheck(nextStartup));
   startupQ.push(()=>{if(quickOpen())return;if(backupDue()&&ui.view==='home'&&!document.querySelector('.sheet.on'))openBackupAsk()});
@@ -2637,6 +2743,7 @@ function loadDemo(){
 
 /* ---------- события ---------- */
 document.addEventListener('click',async ev=>{
+  if(ev.target.closest('.recap a.btn'))return; // ссылку открывает браузер
   const t=ev.target.closest('button,rect.hit,[data-pie],[data-rnav]'); if(!t)return;
   if(t.classList.contains('tab')){go(t.dataset.v);return}
   if(t.id==='gear'){go(ui.view==='settings'?'home':'settings');return}
@@ -2681,6 +2788,12 @@ document.addEventListener('click',async ev=>{
   if(t.dataset.day){const d=Number(t.dataset.day);ui.selDay=ui.selDay===d?null:d;haptic();keepScroll(renderHome);return}
   if(t.dataset.pin!=null){pinKey(t.dataset.pin);return}
   if(t.dataset.recap){openRecap(t.dataset.recap);return}
+  if(t.dataset.hl){const k=t.dataset.hl;haptic();
+    if(k==='news'){const l=lastNews();openStory('news',newsSlides(l.length?l:CHANGELOG.slice(0,1)))}
+    else if(k==='recap'){const pk=shiftMonth(mkey(new Date()),-1);S.hlSeen={...(S.hlSeen||{}),recap:mkey(new Date())};save();keepScroll(renderHome);
+      if(!openRecap(pk))openRecap(null,null,demoSlides())}
+    else openStory('thanks',thanksSlides());
+    return}
   if(t.hasAttribute('data-recapx')){closeRecap();return}
   if(t.hasAttribute('data-recapshare')){shareRecap();return}
   if(t.dataset.rnav){recapNav(+t.dataset.rnav);return}
@@ -2764,6 +2877,11 @@ document.addEventListener('click',async ev=>{
       S.accounts.push({id:uid(),type:'main',name:'Карта',emoji:'💳',start:v,ts:Date.now(),exclude:false});save();haptic('success');keepScroll(renderHome);toast(`💳 Баланс ${money(v)} записан`);break}
     case 'skipbal':S.balAsked=true;save();keepScroll(renderHome);break;
     case 'transfer':openTransfer();break;
+    case 'payOk':payAnswer('ok');break;
+    case 'payWait':payAnswer('wait');break;
+    case 'payDiff':$('#payBtns').hidden=true;$('#payDiffBox').hidden=false;setTimeout(()=>$('#payAmt').focus(),100);break;
+    case 'paySave':{const a=parseAmount($('#payAmt').value);if(!(a>=0)||$('#payAmt').value===''){toast('Сколько пришло?');haptic('warn');return}payAnswer('diff',a);break}
+    case 'payAsk':{S.payAsked=null;if(!maybeAskPay())toast('Нечего подтверждать');break}
     case 'install':if(installPrompt){installPrompt.prompt();installPrompt.userChoice.finally(()=>{installPrompt=null;keepScroll(()=>{renderSettings();syncPlanForm()})})}break;
     case 'limAdd':{const c=$('#lCat').value,a=parseAmount($('#lAmt').value);if(!(a>0)){toast('Введи лимит');haptic('warn');$('#lAmt').focus();return}
       S.catLimits={...(S.catLimits||{}),[c]:a};save();haptic('success');keepScroll(()=>{renderSettings();syncPlanForm()});toast(`🚦 ${cat(c).name}: не больше ${money(a)} в месяц`);break}
@@ -2861,7 +2979,9 @@ document.addEventListener('keydown',ev=>{
   if(ev.key==='Backspace'&&!$('#lock').hidden&&!/INPUT|TEXTAREA/.test(ev.target.tagName)){pinKey('del');return}
   if(ev.key==='Enter'&&ev.target.id==='balIn'){ev.preventDefault();document.querySelector('[data-act="setbal"]').click()}
 });
-$('#scrim').addEventListener('click',()=>{const wn=$('#wsheet').classList.contains('on');closeSheet();if(wn)setTimeout(nextStartup,350)});
+$('#scrim').addEventListener('click',()=>{const wn=$('#wsheet').classList.contains('on'), pq=$('#paysheet').classList.contains('on')&&payQ;closeSheet();
+  if(wn)setTimeout(nextStartup,350);
+  if(pq){const d=payQ.done;payQ=null;S.payAsked=null;save();if(d)setTimeout(d,350)}}); // закрыл без ответа — спросим при следующем открытии
 $('#scanFile').addEventListener('change',e=>{const f=e.target.files[0];e.target.value='';if(f){$('#scan').hidden=false;$('#scanMsg').textContent='Ищу QR-код на фото…';scanFromImage(f).catch(()=>{$('#scanMsg').textContent='Не получилось открыть фото'})}});
 $('#bankFile').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
   try{const ops=bankParse(await readTextSmart(f));if(!ops||!ops.length){toast('Не нашёл операций. Нужна выписка в формате CSV');return}openImport(ops)}

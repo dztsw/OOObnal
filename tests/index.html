@@ -279,13 +279,33 @@ const tests=[
   for(const k of '1234')$(`[data-pin="${k}"]`).click(); await sleep(300);
   ok(!doc.body.classList.contains('locked')&&$('#lock').hidden,'не пустило с верным кодом');
 }],
-['«Что нового»: всё пропущенное, два входа подряд, потом не показывается', async()=>{
+['«Что нового» сторис: всё пропущенное, по пункту на слайд, два входа подряд', async()=>{
   const {ev,$}=await app(); ev("S.seenVersion='1.4.0';S.wnPending=null");
-  eq(ev('checkChangelog()'),true,'1-й вход: окно не показано');
-  const t=txt($('#wnList')); ok(t.includes(ev('CHANGELOG[0].items[0]')),'нет пунктов новой версии');
-  ok(t.includes('Мастер первого запуска')&&t.includes('Цели-накопления'),'показаны не все пропущенные версии (1.5–последняя)');
-  ev('closeSheet()'); eq(ev('checkChangelog()'),true,'2-й вход: окно не показано');
-  ev('closeSheet()'); eq(ev('checkChangelog()'),false,'3-й вход: показалось лишний раз');
+  eq(ev('checkChangelog()'),true,'1-й вход: сторис не показаны'); ok(!$('#recap').hidden,'сторис не открылись');
+  const all=ev("recapState.slides.map(s=>s.t).join(' | ')"); ok(all.includes('Мастер первого запуска')&&all.includes('В день зарплаты спрошу'),'не все пропущенные пункты');
+  ok(ev("recapState.slides.at(-1).link.href")==='https://t.me/dzts_w','на последнем слайде нет ссылки на Telegram');
+  ev('closeRecap()'); eq(ev('checkChangelog()'),true,'2-й вход: не показаны'); ev('closeRecap()'); eq(ev('checkChangelog()'),false,'3-й вход: лишний раз');
+}],
+['Кружки историй: обновление, итоги, спасибо', async()=>{
+  const {ev,$}=await app(); baseState(ev);
+  const hl=$('.hl'); ok(hl,'нет кружков'); eq(hl.querySelectorAll('button').length,3,'кружков должно быть 3');
+  $('[data-hl="thanks"]').click(); ok(!$('#recap').hidden,'история «Спасибо» не открылась'); ok(txt($('#recap')).includes('Спасибо'),'нет благодарности');
+  ev('recapNav(1)'); ok($('#recap a.btn')?.href==='https://t.me/dzts_w','нет кнопки Telegram'); ev('closeRecap()');
+  ok($('[data-hl="thanks"]').classList.contains('seen'),'кружок не стал просмотренным');
+  $('[data-hl="news"]').click(); ok(!$('#recap').hidden,'обновление не открылось'); ev('closeRecap()');
+  $('[data-hl="recap"]').click(); ok(!$('#recap').hidden,'итоги не открылись'); ev('closeRecap()');
+}],
+['Зарплата пришла? Да / другая сумма / ещё не пришла', async()=>{
+  const {ev,$}=await app(); baseState(ev,'S.created=Date.now()-30*864e5');
+  const P0=ev('period()'); eq(P0.income,40000,'по плану');
+  eq(ev('maybeAskPay()'),true,'не спросили в период выплаты'); ok(txt($('#paysheet')).includes('Аванс'),'нет названия выплаты');
+  $('[data-act="payDiff"]').click(); $('#payAmt').value='35000'; $('[data-act="paySave"]').click();
+  eq(ev('period().income'),35000,'не пересчитали от фактической суммы'); eq(ev('maybeAskPay()'),false,'спросили повторно после ответа');
+  ev("S.payActual={}"); ev('maybeAskPay()'); $('[data-act="payWait"]').click();
+  eq(ev('period().income'),0,'«ещё не пришла» — не должна учитываться'); eq(ev('maybeAskPay()'),false,'в тот же день спросили снова');
+  ok(txt($('#v-home')).includes('ещё не пришла'),'на главной нет напоминания');
+  ev("S.payAsked='2000-01-01'"); eq(ev('maybeAskPay()'),true,'на следующий день не спросили'); $('[data-act="payOk"]').click();
+  eq(ev('period().income'),40000,'после «да» должна учитываться полностью');
 }],
 ['Настройки разделами: закрыты, есть подсказка, раздел раскрывается', async()=>{
   const {ev,$}=await app(); baseState(ev); ev("go('settings')");
