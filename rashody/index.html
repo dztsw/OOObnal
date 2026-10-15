@@ -651,7 +651,7 @@ const M_DAT=['январю','февралю','марту','апрелю','маю
 const WD=['вс','пн','вт','ср','чт','пт','сб'];
 const DAY=864e5;
 const DEBT_CATS=new Set(['loans','mortgage','installments']);
-const APP_VERSION='1.8.1';
+const APP_VERSION='1.8.2';
 const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------- утилиты ---------- */
@@ -2113,6 +2113,7 @@ function renderWizard(){
 }
 /* ---------- что нового ---------- */
 const CHANGELOG=[
+  {v:'1.8.2',items:['📜 «Что нового» показывает всё, что ты пропустил, и два входа подряд — чтобы точно не потерялось']},
   {v:'1.8.1',items:['🌗 Подсказка: обе темы — «Спокойная» и «Официальная» — бывают светлыми и тёмными, как тема телефона']},
   {v:'1.8.0',items:['📷 Скан QR-кода с чека: в новой трате кнопка «Чек» — сумма и дата подставятся сами, повторный чек узнаю','🙂 Face ID запускается сразу при входе','⏱️ Можно выбрать, когда снова спрашивать код: сразу, через 5 или 30 минут','🎨 Темы: «Спокойная» и новая «Официальная» (⚙️ → Профиль)','🔍 Экран больше не приближается при нажатиях','🛠️ Надпись «открыть» в настройках больше не переворачивается']},
   {v:'1.7.1',items:['🤖 Инструкция по установке на Android, а в Chrome — кнопка «Установить приложение» (⚙️ внизу)']},
@@ -2121,14 +2122,21 @@ const CHANGELOG=[
   {v:'1.5.0',items:['💳 Счета, переводы между ними, «не учитывать в балансе»','🎯 Цели-накопления со сроками','📊 Диаграммы по категориям: список, круг, столбцы']},
 ];
 const cmpV=(a,b)=>{const x=a.split('.').map(Number),y=b.split('.').map(Number);for(let i=0;i<3;i++){if((x[i]||0)!==(y[i]||0))return (x[i]||0)-(y[i]||0)}return 0};
+// Что нового: каждому показываем всё, что он пропустил с прошлого раза, и не один, а два входа подряд
 function checkChangelog(){
-  const seen=S.seenVersion||'1.6.1'; // у тех, кто пользовался до этой версии, номер ещё не записан
-  S.seenVersion=APP_VERSION; save();
-  if(cmpV(seen,APP_VERSION)>=0)return false;
-  const list=CHANGELOG.filter(c=>cmpV(c.v,seen)>0).slice(0,5);
+  const seen=S.seenVersion||'1.6.1'; // у тех, кто пользовался до появления этого окна, номер ещё не записан
+  if(cmpV(seen,APP_VERSION)<0){
+    const prev=S.wnPending?.from; // если прошлое «что нового» ещё не досмотрели — сохраняем более раннюю точку
+    S.wnPending={from:prev&&cmpV(prev,seen)<0?prev:seen,left:2};
+    S.seenVersion=APP_VERSION;
+  }
+  const wp=S.wnPending;
+  if(!wp||!(wp.left>0)){S.wnPending=null;save();return false}
+  const list=CHANGELOG.filter(c=>cmpV(c.v,wp.from)>0);
+  wp.left--; if(wp.left<=0)S.wnPending=null; save();
   if(!list.length)return false;
-  $('#wnVer').textContent=`версия ${APP_VERSION}`;
-  $('#wnList').innerHTML=list.map((c,i)=>`${list.length>1?`<div class="grp">${i===0?'Сейчас':'Недавно'} · ${c.v}</div>`:''}<ul class="tips" style="margin:6px 0 12px">${c.items.map(x=>`<li class="info"><span>${esc(x)}</span></li>`).join('')}</ul>`).join('');
+  $('#wnVer').textContent=list.length>1?`пропущено обновлений: ${list.length} · сейчас ${APP_VERSION}`:`версия ${APP_VERSION}`;
+  $('#wnList').innerHTML=list.map((c,i)=>`${list.length>1?`<div class="grp">${i===0?'Сейчас':'Пропущено'} · ${c.v}</div>`:''}<ul class="tips" style="margin:6px 0 12px">${c.items.map(x=>`<li class="info"><span>${esc(x)}</span></li>`).join('')}</ul>`).join('');
   openPanel('#wsheet'); return true;
 }
 // Быстрый старт: по настройке или по ссылке ?add (можно ?add&a=250&d=кофе — сумма и описание)

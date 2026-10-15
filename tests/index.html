@@ -279,10 +279,13 @@ const tests=[
   for(const k of '1234')$(`[data-pin="${k}"]`).click(); await sleep(300);
   ok(!doc.body.classList.contains('locked')&&$('#lock').hidden,'не пустило с верным кодом');
 }],
-['«Что нового»: показывается один раз после обновления', async()=>{
-  const {ev,$}=await app(); ev("S.seenVersion='1.6.1'");
-  eq(ev('checkChangelog()'),true,'окно не показано'); ok(txt($('#wnList')).includes(ev('CHANGELOG[0].items[0]')),'нет пунктов новой версии'); ok(txt($('#wnList')).includes('Мастер первого запуска'),'не показаны пропущенные версии');
-  ev('closeSheet()'); eq(ev('checkChangelog()'),false,'показалось второй раз');
+['«Что нового»: всё пропущенное, два входа подряд, потом не показывается', async()=>{
+  const {ev,$}=await app(); ev("S.seenVersion='1.4.0';S.wnPending=null");
+  eq(ev('checkChangelog()'),true,'1-й вход: окно не показано');
+  const t=txt($('#wnList')); ok(t.includes(ev('CHANGELOG[0].items[0]')),'нет пунктов новой версии');
+  ok(t.includes('Мастер первого запуска')&&t.includes('Цели-накопления'),'показаны не все пропущенные версии (1.5–последняя)');
+  ev('closeSheet()'); eq(ev('checkChangelog()'),true,'2-й вход: окно не показано');
+  ev('closeSheet()'); eq(ev('checkChangelog()'),false,'3-й вход: показалось лишний раз');
 }],
 ['Настройки разделами: закрыты, есть подсказка, раздел раскрывается', async()=>{
   const {ev,$}=await app(); baseState(ev); ev("go('settings')");
