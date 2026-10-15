@@ -49,7 +49,7 @@ async function app(w=375,h=812,opts={}){
     W.document.body.appendChild(el);el.remove();
     if(W.__e)throw W.__e; return W.__r;
   };
-  if(!opts.keep){ev("if(!document.getElementById('wiz').hidden)closeWizard();closeSheet();S.name=S.name??'Тест';S.seenVersion=APP_VERSION;0");await sleep(600);ev('closeSheet()')}
+  if(!opts.keep){ev("if(!document.getElementById('wiz').hidden)closeWizard();closeSheet();S.name=S.name??'Тест';S.seenVersion=APP_VERSION;S.recapDemoSeen=true;0");await sleep(600);ev('closeSheet()')}
   return {W,ev,$,doc:W.document};
 }
 // Две выплаты: одна была 3 дня назад, следующая через 5 дней
@@ -335,6 +335,59 @@ const tests=[
   eq(W.getComputedStyle(d.querySelector('.chev')).transform,'none','стрелка с надписью переворачивается');
   ok(W.getComputedStyle(d.querySelector('.chev'),'::before').content.includes('свернуть'),'нет «свернуть»');
   ok(W.document.querySelector('meta[name=viewport]').content.includes('maximum-scale=1'),'масштаб не выключен');
+}],
+['Итоги месяца: слайды по реальным тратам, пример — один раз', async()=>{
+  const {ev,$}=await app(); const pk=ev('shiftMonth(mkey(new Date()),-1)');
+  baseState(ev,`for(let i=1;i<=12;i++)S.expenses.push({id:'r'+i,amount:i===5?9000:300,desc:i%2?'кофе':'Пятёрочка',cat:i%2?'cafe':'food',date:'${''}'+shiftMonth(mkey(new Date()),-1)+'-'+String(i).padStart(2,'0'),ts:i})`);
+  const sl=ev(`recapSlides('${pk}').map(s=>s.k)`); ok(sl.includes('Главная любовь месяца')&&sl.includes('Самая дорогая покупка')&&sl.includes('Твоя привычка'),'не все слайды: '+sl.join(', '));
+  ev(`openRecap('${pk}')`); ok(!$('#recap').hidden,'итоги не открылись'); ev('recapNav(1)'); ev('closeRecap()'); ok($('#recap').hidden,'итоги не закрылись');
+  ev("S.recapDemoSeen=false;S.recapSeen='${pk}'".replace('${pk}',pk)); ev('S.recapSeen=shiftMonth(mkey(new Date()),-1)');
+  ev('maybeRecap()'); ok(txt($('#recap')).includes('Это пример'),'пример не показан'); ev('closeRecap()');
+  eq(ev('maybeRecap()'),false,'пример показался второй раз');
+}],
+['Календарь: цвета дней по дневной норме', async()=>{
+  const {ev,$}=await app(); baseState(ev); const n=ev('dayNorm()'); ok(n>0,'нет дневной нормы');
+  eq(ev(`dayStatus(${n*.5},${n})`),'ok','в норме'); eq(ev(`dayStatus(${n*.9},${n})`),'near','близко'); eq(ev(`dayStatus(${n*1.3},${n})`),'over','за пределами');
+  ev(`S.expenses.push({id:'c1',amount:${Math.round(n*1.5)},desc:'ресторан',cat:'cafe',date:todayStr(),ts:1});ui.histView='cal';go('history')`);
+  ok($('.cal .d.over.today'),'сегодняшний день не красный'); ok(txt($('#v-history')).includes('за пределами'),'нет легенды');
+}],
+['Голосовой ввод: разбор фраз', async()=>{
+  const {ev}=await app();
+  const t=(x)=>ev(`parseSpoken(${JSON.stringify(x)})`);
+  let r=t('кофе двести пятьдесят'); eq(r.amount,250,'словами'); eq(r.desc,'Кофе','описание');
+  r=t('такси 480 рублей'); eq(r.amount,480,'цифрами'); eq(r.desc,'Такси','описание 2');
+  r=t('продукты полторы тысячи'); eq(r.amount,1500,'полторы тысячи');
+  r=t('ремонт телефона 3 тысячи'); eq(r.amount,3000,'3 тысячи'); eq(r.desc,'Ремонт телефона','описание 3');
+  r=t('кроссовки 2 500'); eq(r.amount,2500,'число с пробелом');
+}],
+['Валюта: сумма в евро пересчитывается в рубли по курсу', async()=>{
+  const {ev,$,W}=await app(); baseState(ev);
+  ev('openSheet()'); $('#fAmount').value='12'; $('#fCur').value='EUR'; $('#fCur').dispatchEvent(new W.Event('change',{bubbles:true}));
+  ok(!$('#fRate').hidden,'нет поля курса'); $('#fRateIn').value='95,5'; $('#fDesc').value='Кофе в Стамбуле'; ev('saveForm()');
+  const e=ev('S.expenses.at(-1)'); eq(e.amount,1146,'рубли'); eq(e.cur,'EUR','валюта'); eq(e.camt,12,'исходная сумма');
+  ev("go('history')"); ok(txt($('#v-history')).includes('12 €'),'в истории нет суммы в валюте');
+}],
+['Автопоиск подписок: находит, добавляет в обязательные, «не то» скрывает', async()=>{
+  const {ev,$}=await app(); const m=k=>ev(`shiftMonth(mkey(new Date()),${k})`);
+  baseState(ev,`S.expenses.push({id:'s1',amount:399,desc:'Кинопоиск',cat:'subs',date:'${m(-2)}-07',ts:1},{id:'s2',amount:399,desc:'Кинопоиск',cat:'subs',date:'${m(-1)}-07',ts:2},
+    {id:'s3',amount:299,desc:'VPN',cat:'subs',date:'${m(-2)}-12',ts:3},{id:'s4',amount:299,desc:'VPN',cat:'subs',date:'${m(-1)}-12',ts:4},
+    {id:'s5',amount:250,desc:'Кофе',cat:'cafe',date:'${m(-1)}-03',ts:5},{id:'s6',amount:270,desc:'Кофе',cat:'cafe',date:'${m(-1)}-04',ts:6},{id:'s7',amount:260,desc:'Кофе',cat:'cafe',date:'${m(-2)}-04',ts:7})`);
+  const found=ev('detectRecurring().map(x=>x.desc)'); ok(found.includes('Кинопоиск')&&found.includes('VPN'),'не нашёл подписки: '+found); ok(!found.includes('Кофе'),'кофе — не подписка');
+  ev("go('tips')"); $('[data-subadd="кинопоиск"]').click(); ok(ev("S.planned.some(p=>p.name==='Кинопоиск'&&p.amount===399)"),'не добавился в обязательные');
+  $('[data-subno="vpn"]').click(); eq(ev('detectRecurring().length'),0,'«не то» не скрыло');
+}],
+['Импорт выписки Т-Банка (CSV): разбор, категории, без дублей', async()=>{
+  const {ev,$,W}=await app(); baseState(ev);
+  const csv=['"Дата операции";"Дата платежа";"Номер карты";"Статус";"Сумма операции";"Валюта операции";"Сумма платежа";"Валюта платежа";"Кэшбэк";"Категория";"MCC";"Описание";"Бонусы (включая кэшбэк)"',
+    '"14.10.2026 18:22:10";"14.10.2026";"*1234";"OK";"-1 234,50";"RUB";"-1 234,50";"RUB";"";"Супермаркеты";"5411";"Пятёрочка";"12,00"',
+    '"13.10.2026 09:01:00";"13.10.2026";"*1234";"OK";"-350,00";"RUB";"-350,00";"RUB";"";"Фастфуд";"5814";"Вкусно и точка";"0,00"',
+    '"12.10.2026 12:00:00";"12.10.2026";"*1234";"FAILED";"-999,00";"RUB";"-999,00";"RUB";"";"Разное";"";"Отклонено";"0"',
+    '"10.10.2026 10:00:00";"10.10.2026";"";"OK";"85 000,00";"RUB";"85 000,00";"RUB";"";"Пополнения";"";"Зарплата";"0"'].join('\r\n');
+  const ops=(W.__csv=csv,ev('bankParse(window.__csv)')); eq(ops.length,3,'операций (без отклонённой)');
+  eq(ops[0].amount,1234.5,'сумма'); eq(ops[0].kind,'exp','расход'); eq(ops[2].kind,'inc','поступление'); eq(ops[0].date,'2026-10-14','дата');
+  (W.__csv=csv,ev('openImport(bankParse(window.__csv))')); ok(txt($('#impBody')).includes('Расходов 2'),'неверное превью'); ev('doImport()');
+  eq(ev("S.expenses.filter(e=>e.imp).length"),2,'импортировано расходов'); eq(ev("S.expenses.find(e=>e.desc==='Вкусно и точка').cat"),'cafe','категория');
+  (W.__csv=csv,ev('openImport(bankParse(window.__csv))')); ok(txt($('#impBody')).includes('будут пропущены: 2'),'повторный импорт не распознал дубли');
 }],
 ['Версия внизу настроек, без подписи', async()=>{
   const {ev,$}=await app(); ev("go('settings')");
