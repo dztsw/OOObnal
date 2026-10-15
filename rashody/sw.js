@@ -1,5 +1,5 @@
 // Кэш приложения для работы без интернета.
-const CACHE = 'rashody-v9';
+const CACHE = 'rashody-v10';
 const FILES = ['./', 'index.html', 'categories.js', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -14,8 +14,9 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET' || new URL(e.request.url).origin !== location.origin) return;
   e.respondWith(caches.open(CACHE).then(async c => {
     const cached = await c.match(e.request, { ignoreSearch: true });
+    // если сервер ответил ошибкой (например, 404), а копия есть — открываем копию
     const net = fetch(e.request, { cache: 'no-cache' })
-      .then(r => { if (r.ok) c.put(e.request, r.clone()); return r; });
+      .then(r => { if (r.ok) { c.put(e.request, r.clone()); return r; } return cached || r; });
     if (!cached) return net;
     const slow = new Promise(res => setTimeout(() => res(cached), 3000));
     return Promise.race([net.catch(() => cached), slow]);
