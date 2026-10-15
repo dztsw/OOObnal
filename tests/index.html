@@ -255,6 +255,10 @@ const tests=[
   $('#pAmount').value='30000'; $('#pDay').value='5'; $('#pRate').value='9,5'; $('#pEnd').value='2040-05-05'; $('[data-act="planSave"]').click();
   eq(ev("S.planned[1].rate"),9.5,'ставка'); eq(ev("S.planned[1].end"),'2040-05-05','дата окончания');
 }],
+['Сюрприз: чужое имя ничего не открывает', async()=>{
+  const {ev,$}=await app(); ev("S.name='Вова'"); await ev('loveCheck()'); await sleep(1500);
+  ok(!ev('ui.love'),'расшифровалось чужим именем'); ok(!$('.love'),'показался сюрприз');
+}],
 ['Подпись и версия внизу настроек', async()=>{
   const {ev,$}=await app(); ev("go('settings')");
   const t=txt($('#v-settings')); ok(t.includes('версия '+ev('APP_VERSION')),'нет версии'); ok(t.includes('dzts_w'),'нет подписи');

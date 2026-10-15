@@ -368,6 +368,18 @@ svg.donut .c1{font-size:11px;fill:var(--muted)} svg.donut .c2{font-size:15px;fon
 .acc-chips span{font-size:13px;padding:4px 10px;border-radius:999px;background:var(--card-solid);border:1px solid var(--ring);color:var(--ink2)}
 .goal-bar>i{background:linear-gradient(90deg,#ff9a3c,#ff5480)!important}
 button.card{display:block;width:100%;text-align:left;font:inherit;color:inherit}
+/* сюрприз: фраза с сердечками */
+.love{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:24px;text-align:center;
+  background:radial-gradient(circle at 50% 45%,rgba(255,170,190,.55),rgba(255,120,150,.25) 45%,rgba(40,10,20,.35));
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:lovein .45s ease both;cursor:pointer}
+.love.out{animation:loveout .6s ease both}
+.love .txt{font-size:34px;font-weight:800;color:#fff;letter-spacing:-.01em;line-height:1.2;
+  text-shadow:0 4px 24px rgba(180,20,60,.45);animation:lovepop .8s cubic-bezier(.3,1.6,.5,1) .15s both}
+.love .sub{display:block;font-size:14px;font-weight:600;opacity:.85;margin-top:14px;letter-spacing:0}
+.heart{position:fixed;z-index:1;pointer-events:none;font-size:24px}
+.love .txt{position:relative;z-index:2}
+@keyframes lovein{from{opacity:0}} @keyframes loveout{to{opacity:0}}
+@keyframes lovepop{from{opacity:0;transform:scale(.5)}}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
@@ -513,7 +525,7 @@ const M_DAT=['январю','февралю','марту','апрелю','маю
 const WD=['вс','пн','вт','ср','чт','пт','сб'];
 const DAY=864e5;
 const DEBT_CATS=new Set(['loans','mortgage','installments']);
-const APP_VERSION='1.6.0';
+const APP_VERSION='1.6.1';
 const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------- утилиты ---------- */
@@ -563,6 +575,37 @@ function haptic(kind='light'){
     if(ae&&(ae.tagName==='TEXTAREA'||ae.tagName==='SELECT'||(ae.tagName==='INPUT'&&ae.type!=='checkbox')))return;
     const l=$('#hapticL'); l.click(); if(kind!=='light')setTimeout(()=>l.click(),110);
   }catch(e){}
+}
+// Персональный сюрприз. Фраза зашифрована, ключ получается из имени, поэтому в открытом коде
+// нет ни имени, ни текста: расшифровать сможет только приложение с нужным именем в настройках.
+const LOVE={"salt": "is7xjEIxBD6mAEWOuKptfA==", "iv": "4ZaIBr/LdvYO3990", "ct": "0/xvVekgu+4cwdxiXsg7b4+PsfdkVNHEAghM4pOSL+3+PwLXH+W/WOqD"};
+const unb64=t=>Uint8Array.from(atob(t),c=>c.charCodeAt(0));
+async function loveCheck(){
+  ui.love=null;
+  if(!S.name||!window.crypto?.subtle)return;
+  try{
+    const enc=new TextEncoder();
+    const base=await crypto.subtle.importKey('raw',enc.encode(norm(S.name)),'PBKDF2',false,['deriveKey']);
+    const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:unb64(LOVE.salt),iterations:150000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['decrypt']);
+    ui.love=new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(LOVE.iv)},key,unb64(LOVE.ct)));
+  }catch(e){return} // другое имя — просто не расшифровалось
+  if(ui.view==='home')keepScroll(renderHome);
+  if(S.loveDay!==todayStr()){S.loveDay=todayStr();save();showLove(ui.love)} // раз в сутки
+}
+function showLove(text){
+  closeSheet();
+  const o=document.createElement('div');o.className='love';o.setAttribute('role','dialog');
+  o.innerHTML=`<div class="txt">${esc(text)}<span class="sub">💛 нажми, чтобы закрыть</span></div>`;
+  document.body.appendChild(o); haptic('success');
+  if(!REDUCED){const em=['❤️','💛','💕','💖','🧡','💗'];
+    for(let i=0;i<38;i++){const h=document.createElement('i');h.className='heart';h.textContent=em[i%em.length];
+      const x=Math.random()*innerWidth, sz=16+Math.random()*26;h.style.left=x+'px';h.style.top=innerHeight+20+'px';h.style.fontSize=sz+'px';
+      o.appendChild(h); // сердечки внутри заставки — под текстом
+      h.animate([{transform:'translate(0,0) rotate(0)',opacity:0},{opacity:1,offset:.1},
+        {transform:`translate(${(Math.random()-.5)*120}px,${-innerHeight-80}px) rotate(${(Math.random()-.5)*60}deg)`,opacity:.9}],
+        {duration:2600+Math.random()*2200,delay:Math.random()*1400,easing:'cubic-bezier(.3,.6,.5,1)',fill:'both'}).onfinish=()=>h.remove()}}
+  const close=()=>{if(o.classList.contains('out'))return;o.classList.add('out');setTimeout(()=>o.remove(),600)};
+  o.addEventListener('click',close); setTimeout(close,6000);
 }
 function confetti(x,y){
   if(REDUCED)return;
@@ -1034,7 +1077,7 @@ function go(view){if(ui.view===view)return;ui.view=view;window.scrollTo(0,0);hap
 function greeting(){
   const h=new Date().getHours(), n=(S.name||'').trim();
   const [w,e]=h<5?['Доброй ночи','🌙']:h<12?['Доброе утро','☀️']:h<18?['Добрый день','🌤️']:h<23?['Добрый вечер','🌇']:['Доброй ночи','🌙'];
-  return `${w}${n?', '+esc(n):''} ${e}`;
+  return ui.love?`${w}, ${esc(n)} 💛`:`${w}${n?', '+esc(n):''} ${e}`;
 }
 function welcomeCard(){ // спрашиваем имя один раз
   if(S.name!=null)return '';
@@ -1870,7 +1913,7 @@ document.addEventListener('click',async ev=>{
       else S.planned.push({id:uid(),...row});
       const was=ui.pEdit; ui.pEdit=null; save(); keepScroll(()=>{renderSettings();syncPlanForm()}); haptic('success'); toast(was?'Сохранено':`📌 ${name} добавлен`);break}
     case 'planCancel':ui.pEdit=null;keepScroll(()=>{renderSettings();syncPlanForm()});break;
-    case 'setname':{const n=$('#nameIn').value.trim();if(!n){$('#nameIn').focus();return}S.name=n;save();haptic('success');keepScroll(renderHome);toast(`Приятно познакомиться, ${n}! ☀️`);break}
+    case 'setname':{const n=$('#nameIn').value.trim();if(!n){$('#nameIn').focus();return}S.name=n;save();haptic('success');keepScroll(renderHome);toast(`Приятно познакомиться, ${n}! ☀️`);loveCheck();break}
     case 'skipname':S.name='';save();keepScroll(renderHome);break;
     case 'setbal':{const v=parseAmount($('#balIn').value);if(!(v>=0)){$('#balIn').focus();return}
       S.accounts.push({id:uid(),type:'main',name:'Карта',emoji:'💳',start:v,ts:Date.now(),exclude:false});save();haptic('success');keepScroll(renderHome);toast(`💳 Баланс ${money(v)} записан`);break}
@@ -1930,6 +1973,7 @@ document.addEventListener('input',ev=>{
   if(ui.view==='settings'){clearTimeout(adviceTimer);adviceTimer=setTimeout(()=>{const a=$('#saveAdvice');if(a)a.innerHTML=piggyLine()+saveAdviceHtml()},250)}
 });
 document.addEventListener('change',ev=>{
+  if(ev.target.dataset?.bind==='name')loveCheck();
   if(ev.target.id==='pFreq'||ev.target.id==='pCat')syncPlanForm();
   const b=ev.target.dataset?.bind||'';
   if(b.endsWith(':cat'))ev.target.dispatchEvent(new Event('input',{bubbles:true}));
@@ -1951,6 +1995,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S&&ui.vie
   S=freshState(); compileKW();
   S=migrate(await loadState());
   save(); render();
+  setTimeout(loveCheck,700);
   if(S.expenses.length)askPersist().then(()=>ui.view==='settings'&&render());
   try{screen.orientation?.lock?.('portrait').catch(()=>{})}catch(e){}
   if(!S.carryFrom){const b=bounds(sod(new Date()));S.carryFrom=b?ymd(b.start):todayStr();save()}
