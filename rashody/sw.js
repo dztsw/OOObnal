@@ -1,6 +1,6 @@
 // Кэш приложения для работы без интернета.
-const CACHE = 'rashody-v12';
-const FILES = ['./', 'index.html', 'categories.js', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
+const CACHE = 'rashody-v13';
+const FILES = ['./', 'index.html', 'categories.js', 'vendor/jsQR.js', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));

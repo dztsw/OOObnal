@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <!-- Защита: страница может загружать и отправлять данные только на свой же сайт -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
@@ -51,6 +51,7 @@
 html,body{margin:0;background:var(--bg);color:var(--ink);
   font:16px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}
 html,body{overscroll-behavior-y:none}
+html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%} /* без приближения от двойного касания */
 body{min-height:100vh;padding-bottom:calc(96px + env(safe-area-inset-bottom));overflow-x:clip}
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 input,select,textarea{font:inherit;font-size:16px;color:var(--ink)}
@@ -385,8 +386,10 @@ details.sect>summary{flex-wrap:wrap}
 details.sect>summary .st{display:flex;flex-direction:column;gap:2px;min-width:0}
 details.sect>summary .sub{font-size:13px;font-weight:500;color:var(--muted)}
 details.sect>summary .chev{font-size:12px;color:var(--accent-strong);font-weight:650;white-space:nowrap}
-details.sect:not([open])>summary .chev::before{content:"открыть "}
-details.sect[open]>summary .chev::before{content:"свернуть "}
+details.sect>summary .chev{font-size:0}
+details.sect[open]>summary .chev{transform:none}
+details.sect:not([open])>summary .chev::before{content:"открыть ▾";font-size:12px}
+details.sect[open]>summary .chev::before{content:"свернуть ▴";font-size:12px}
 .sec-hint{display:flex;align-items:center;gap:8px;justify-content:center;font-size:14px;color:var(--ink2);margin:0 0 12px;animation:bob 2.4s ease-in-out infinite}
 .lockbox{display:grid;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
 /* экран блокировки */
@@ -419,6 +422,60 @@ body.locked header,body.locked main,body.locked nav.tabs{visibility:hidden}
 .wiz .hero-res .n{font-size:40px;font-weight:800;letter-spacing:-.02em}
 .crow .bar>i.warn{background:var(--warn)} .crow .bar>i.bad{background:var(--bad)}
 .crow .lim{font-size:12px;color:var(--muted);font-weight:500}
+/* ===== тема «Официальная»: сине-белая, строгая ===== */
+html[data-skin="official"]{
+  color-scheme:light;
+  --bg:#f2f5f9; --card:#fff; --card-solid:#fff; --ink:#0b1f33; --ink2:#5a6b7d; --muted:#8a96a3;
+  --line:#e1e7ef; --base:#c8d2de; --ring:#e1e7ef;
+  --accent:#0d4cd3; --accent-strong:#0b3fae; --accent-soft:#e4ecfd; --on-accent:#fff;
+  --good:#00a86b; --good-ink:#007a4d; --warn:#f5a300; --bad:#ee3f58;
+  --hero:linear-gradient(135deg,#0d4cd3 0%,#2d6cf2 100%); --hero-bad:linear-gradient(135deg,#ee3f58,#c7243f);
+  --shadow:0 1px 3px rgba(11,31,51,.06),0 6px 20px rgba(11,31,51,.06); --blob-op:0;
+}
+@media (prefers-color-scheme: dark){html[data-skin="official"]:not([data-theme="light"]){
+  color-scheme:dark;
+  --bg:#0e1621; --card:#17212d; --card-solid:#17212d; --ink:#eef3f8; --ink2:#a9b8c8; --muted:#7d8c9c;
+  --line:#26323f; --base:#334253; --ring:#26323f; --accent:#4d8bff; --accent-strong:#8fb5ff; --accent-soft:#1d3157;
+  --good-ink:#3fd08f; --shadow:none;
+  --hero:linear-gradient(135deg,#1a56db 0%,#3d7bf5 100%);
+}}
+html[data-skin="official"] .bgfx{display:none}
+html[data-skin="official"] .card{border-radius:16px;backdrop-filter:none;-webkit-backdrop-filter:none}
+html[data-skin="official"] .sunny{box-shadow:0 10px 26px rgba(13,76,211,.28)}
+html[data-skin="official"] .sunny::before{display:none}
+html[data-skin="official"] .btn.primary,html[data-skin="official"] .chip.on,html[data-skin="official"] .gear-hint{background:var(--accent);box-shadow:none}
+html[data-skin="official"] .gear-hint::before{background:var(--accent)}
+html[data-skin="official"] .fab{background:var(--accent);box-shadow:0 8px 20px rgba(13,76,211,.35);animation:none;border-radius:18px}
+html[data-skin="official"] .pay-btn{box-shadow:none}
+html[data-skin="official"] .crow .bar>i{background:var(--accent)}
+html[data-skin="official"] .crow .bar>i.warn{background:var(--warn)} html[data-skin="official"] .crow .bar>i.bad{background:var(--bad)}
+html[data-skin="official"] .vbar i{background:var(--accent)}
+html[data-skin="official"] #barg stop{stop-color:var(--accent)}
+html[data-skin="official"] .goal-bar>i{background:var(--accent)!important}
+html[data-skin="official"] .tab.on{color:var(--accent)}
+html[data-skin="official"] .tab .i{filter:grayscale(1)}
+html[data-skin="official"] .tab.on .i{filter:none}
+html[data-skin="official"] .wiz .hero-res{box-shadow:0 10px 26px rgba(13,76,211,.28)}
+html[data-skin="official"] .tips .info .ic{background:var(--accent-soft)}
+.skinsw{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+.skinsw button{padding:12px;border-radius:14px;border:2px solid var(--ring);background:var(--card-solid);text-align:left;font-weight:650}
+.skinsw button.on{border-color:var(--accent)}
+.skinsw small{display:block;font-weight:500;color:var(--muted);font-size:12px;margin-top:2px}
+.skinsw .sw2{display:flex;gap:4px;margin-bottom:6px}.skinsw .sw2 i{width:16px;height:16px;border-radius:5px}
+/* ===== сканер QR ===== */
+.scan{position:fixed;inset:0;z-index:70;background:#000;color:#fff;display:flex;flex-direction:column}
+.scan video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.scan .frame{position:absolute;left:50%;top:42%;width:min(68vw,280px);aspect-ratio:1;transform:translate(-50%,-50%);border-radius:22px;
+  box-shadow:0 0 0 100vmax rgba(0,0,0,.45)}
+.scan .frame::before,.scan .frame::after{content:"";position:absolute;inset:-2px;border-radius:22px;border:3px solid #fff;
+  -webkit-mask:conic-gradient(#000 0 25%,transparent 0 50%,#000 0 75%,transparent 0) 0 0/50% 50%;mask:conic-gradient(#000 0 25%,transparent 0 50%,#000 0 75%,transparent 0) 0 0/50% 50%}
+.scan .line{position:absolute;left:10%;right:10%;height:2px;background:#4dd2ff;box-shadow:0 0 12px #4dd2ff;animation:scanl 2s ease-in-out infinite alternate}
+@keyframes scanl{from{top:12%}to{top:88%}}
+.scan .top,.scan .bot{position:relative;z-index:1;padding:calc(env(safe-area-inset-top) + 16px) 16px 16px;text-align:center}
+.scan .bot{margin-top:auto;padding:16px 16px calc(env(safe-area-inset-bottom) + 18px);display:grid;gap:10px}
+.scan .msg{font-size:16px;font-weight:600;text-shadow:0 1px 6px rgba(0,0,0,.6)}
+.scan .btn{background:rgba(255,255,255,.16);color:#fff;border-color:rgba(255,255,255,.25)}
+.amount-wrap .qrbtn{margin-left:auto;align-self:center;font-size:14px;padding:8px 12px;white-space:nowrap}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
@@ -461,7 +518,7 @@ body.locked header,body.locked main,body.locked nav.tabs{visibility:hidden}
   <div class="grab"></div>
   <div class="sheet-h"><h3 id="sTitle">Новая трата</h3><button class="btn sm" data-close>Закрыть</button></div>
   <div class="seg" id="fType"><button data-type="exp" class="on">Расход</button><button data-type="inc">Доход</button></div>
-  <div class="amount-wrap"><input class="amount-in num" id="fAmount" inputmode="decimal" placeholder="0" autocomplete="off"><span>₽</span></div>
+  <div class="amount-wrap"><input class="amount-in num" id="fAmount" inputmode="decimal" placeholder="0" autocomplete="off"><span>₽</span><button class="btn qrbtn" id="qrBtn" aria-label="Сканировать QR-код чека">📷 Чек</button></div>
   <div class="hint">Можно складывать: 250+180</div>
   <input class="inp" id="fDesc" placeholder="На что? Булочка, такси, капли в нос…" autocomplete="off" enterkeyhint="done">
   <div class="guess" id="fGuess"></div>
@@ -549,6 +606,17 @@ body.locked header,body.locked main,body.locked nav.tabs{visibility:hidden}
   <div class="hint" style="margin:0 0 12px">Перевод не считается тратой — деньги просто переходят между твоими счетами.</div>
   <div class="btns"><button class="btn primary block" id="tSave">Перевести</button></div>
 </div>
+<!-- сканер QR-кода с чека -->
+<div class="scan" id="scan" hidden>
+  <video id="scanVideo" playsinline muted></video>
+  <div class="frame"><div class="line"></div></div>
+  <div class="top"><div class="msg" id="scanMsg">Наведи камеру на QR-код чека</div></div>
+  <div class="bot">
+    <button class="btn block" id="scanPhoto">🖼️ Выбрать фото чека</button>
+    <button class="btn block" id="scanClose">Отмена</button>
+  </div>
+</div>
+<input type="file" id="scanFile" accept="image/*" hidden>
 <!-- шторка: что нового -->
 <div class="sheet" id="wsheet" role="dialog" aria-modal="true">
   <div class="grab"></div>
@@ -583,7 +651,7 @@ const M_DAT=['январю','февралю','марту','апрелю','маю
 const WD=['вс','пн','вт','ср','чт','пт','сб'];
 const DAY=864e5;
 const DEBT_CATS=new Set(['loans','mortgage','installments']);
-const APP_VERSION='1.7.1';
+const APP_VERSION='1.8.0';
 const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------- утилиты ---------- */
@@ -623,6 +691,73 @@ function parseAmount(s){
 }
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('on'),2400)}
 
+/* ---------- скан QR-кода с чека ---------- */
+// На кассовых чеках в QR: t=ГГГГММДДTЧЧММ&s=сумма&fn=…&i=…&fp=…&n=тип (1 — покупка, 2 — возврат)
+function parseReceipt(text){
+  const q=new URLSearchParams(String(text||'').trim()), sv=q.get('s'), t=q.get('t');
+  if(!sv||!t)return null;
+  const amount=Math.round(parseFloat(sv.replace(',','.'))*100)/100, m=t.match(/^(\d{4})(\d{2})(\d{2})/);
+  if(!(amount>0)||!m)return null;
+  return {amount,date:`${m[1]}-${m[2]}-${m[3]}`,id:[q.get('fn'),q.get('i'),q.get('fp')].join('-'),refund:q.get('n')==='2'||q.get('n')==='4'};
+}
+// библиотеку распознавания грузим только когда нужна (она в приложении, не с чужого сайта)
+function loadJsQR(){return window.jsQR?Promise.resolve():new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='vendor/jsQR.js';sc.onload=res;sc.onerror=rej;document.head.appendChild(sc)})}
+let barcodeDet=null; try{if('BarcodeDetector' in window)barcodeDet=new BarcodeDetector({formats:['qr_code']})}catch(e){}
+let scanStream=null, scanTimer=null;
+async function decodeCanvas(c,ctx,deep){
+  if(barcodeDet){try{const r=await barcodeDet.detect(c);if(r[0])return r[0].rawValue}catch(e){}}
+  if(!window.jsQR)return null;
+  const img=ctx.getImageData(0,0,c.width,c.height);
+  return jsQR(img.data,c.width,c.height,{inversionAttempts:deep?'attemptBoth':'dontInvert'})?.data||null;
+}
+function applyReceipt(r){
+  const dup=[...S.expenses,...S.extra].find(e=>e.qr&&e.qr===r.id);
+  if(r.refund&&ui.fType!=='inc'){ui.fType='inc';applyType()}
+  $('#fAmount').value=String(r.amount).replace('.',','); $('#fDate').value=r.date; ui.fQr=r.id;
+  haptic(dup?'warn':'success');
+  toast(dup?`⚠️ Этот чек уже добавлен: ${money(dup.amount)}, ${fmtDs(dup.date)}`:`🧾 Чек: ${String(r.amount).replace('.',',')} ₽ от ${fmtDs(r.date)}${r.refund?' · возврат':''}`);
+  setTimeout(()=>$('#fDesc').focus(),150);
+}
+function handleQR(text){
+  const r=parseReceipt(text);
+  if(!r){$('#scanMsg').textContent='Это не QR-код с чека — попробуй другой';return false}
+  stopScan(); applyReceipt(r); return true;
+}
+function stopScan(){clearTimeout(scanTimer);scanTimer=null;scanStream?.getTracks().forEach(t=>t.stop());scanStream=null;$('#scanVideo').srcObject=null;$('#scan').hidden=true}
+async function openScan(){
+  $('#scan').hidden=false; $('#scanMsg').textContent='Наведи камеру на QR-код чека';
+  try{await loadJsQR()}catch(e){$('#scanMsg').textContent='Не загрузился сканер — проверь интернет';return}
+  if(!navigator.mediaDevices?.getUserMedia){$('#scanMsg').textContent='Камера недоступна — выбери фото чека';return}
+  try{
+    scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280}},audio:false});
+    const v=$('#scanVideo'); v.srcObject=scanStream; await v.play();
+    const c=document.createElement('canvas'), ctx=c.getContext('2d',{willReadFrequently:true});
+    const tick=async()=>{
+      if(!scanStream)return;
+      if(v.readyState>=2&&v.videoWidth){const w=Math.min(720,v.videoWidth);c.width=w;c.height=Math.round(v.videoHeight*w/v.videoWidth);
+        ctx.drawImage(v,0,0,c.width,c.height); const t=await decodeCanvas(c,ctx,false); if(t&&handleQR(t))return}
+      scanTimer=setTimeout(tick,160)};
+    tick();
+  }catch(e){$('#scanMsg').textContent='Нет доступа к камере. Разреши её в настройках телефона или выбери фото чека.'}
+}
+// распознать QR на картинке (фото из галереи или ссылка)
+async function scanFromImage(src){
+  await loadJsQR();
+  const img=new Image(); img.src=typeof src==='string'?src:URL.createObjectURL(src);
+  await img.decode();
+  for(const max of [1400,900,2000]){ // мелкий QR лучше ловится в разном масштабе
+    const k=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight)), c=document.createElement('canvas'), ctx=c.getContext('2d',{willReadFrequently:true});
+    c.width=Math.round(img.naturalWidth*k); c.height=Math.round(img.naturalHeight*k); ctx.drawImage(img,0,0,c.width,c.height);
+    const t=await decodeCanvas(c,ctx,true); if(t)return handleQR(t);
+  }
+  $('#scanMsg').textContent='Не нашёл QR-код на фото — сними поближе и ровнее'; return false;
+}
+/* ---------- тема ---------- */
+function applySkin(){
+  const off=S?.skin==='official'; document.documentElement.dataset.skin=off?'official':'calm';
+  const dark=matchMedia('(prefers-color-scheme: dark)').matches;
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m=>m.content=off?(dark?'#0e1621':'#f2f5f9'):(m.media.includes('dark')?'#1c1222':'#fff4e6'));
+}
 /* ---------- установка на Android ---------- */
 let installPrompt=null;
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;if(S&&ui.view==='settings')keepScroll(()=>{renderSettings();syncPlanForm()})});
@@ -668,7 +803,9 @@ function lockNow(){
   document.body.classList.add('locked'); closeSheet();
   showPin({title:S.name?`Привет, ${S.name}!`:'Введи код',sub:'Введи код, чтобы открыть «Расходы»',face:!!S.lock.cred,alt:'Забыл код?',
     onEnter:async pin=>{if(!(await checkPin(pin)))return false;unlock()}});
-  if(S.lock.cred)setTimeout(faceUnlock,350);
+  if(S.lock.cred){faceUnlock();
+    // если iPhone не дал запустить Face ID без касания — хватит одного касания в любом месте экрана
+    $('#lock').addEventListener('pointerdown',ev=>{if(!ev.target.closest('[data-pin]'))faceUnlock()},{once:true})}
 }
 function unlock(){document.body.classList.remove('locked');hidePin();haptic('success');const f=afterUnlock;afterUnlock=null;if(f)f()}
 async function faceAvailable(){try{return !!(window.PublicKeyCredential&&await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable())}catch(e){return false}}
@@ -681,13 +818,16 @@ async function enableFace(){
     S.lock.cred=b64(cred.rawId); save(); haptic('success'); toast('🙂 Face ID включён'); return true;
   }catch(e){toast('Face ID не включился — можно входить по коду');return false}
 }
+let faceBusy=false;
 async function faceUnlock(){
-  if(!S.lock?.cred||!document.body.classList.contains('locked'))return;
+  if(!S.lock?.cred||!document.body.classList.contains('locked')||faceBusy)return;
+  faceBusy=true;
   try{
     await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),
       allowCredentials:[{type:'public-key',id:unb64(S.lock.cred),transports:['internal']}],userVerification:'required',timeout:60000}});
     unlock();
   }catch(e){} // отменили или не вышло — остаётся вход по коду
+  finally{faceBusy=false}
 }
 // установка / смена / выключение кода через тот же экран
 function pinSetupFlow(){
@@ -1649,17 +1789,24 @@ function renderSettings(){
   const lockOn=!!S.lock?.pin;
   $('#v-settings').innerHTML=`
     ${S.secHintSeen?'':'<div class="sec-hint">👇 Нажми на раздел, чтобы открыть его</div>'}
-    ${sec('profile','🙂 Профиль и вход',`${S.name?esc(S.name)+' · ':''}${lockOn?(S.lock.cred?'код и Face ID':'вход по коду'):'без кода'}`,`
+    ${sec('profile','🙂 Профиль, тема и вход',`${S.name?esc(S.name)+' · ':''}${S.skin==='official'?'официальная':'спокойная'} · ${lockOn?(S.lock.cred?'код и Face ID':'вход по коду'):'без кода'}`,`
       <div class="flabel">Как тебя зовут</div><input class="inp" data-bind="name" placeholder="Имя" value="${esc(S.name||'')}" autocomplete="given-name">
+      <div class="lockbox"><b>🎨 Тема</b>
+        <div class="skinsw">
+          <button data-skin="calm" class="${S.skin!=='official'?'on':''}"><span class="sw2"><i style="background:#ffb03a"></i><i style="background:#ff6a4d"></i><i style="background:#ff4f8b"></i></span>Спокойная<small>тёплая, солнечная</small></button>
+          <button data-skin="official" class="${S.skin==='official'?'on':''}"><span class="sw2"><i style="background:#0d4cd3"></i><i style="background:#fff;border:1px solid #c8d2de"></i><i style="background:#ee3f58"></i></span>Официальная<small>строгая, сине-белая</small></button>
+        </div></div>
       <div class="lockbox">
         <div><b>🔒 Вход по коду</b> <span class="small muted">${lockOn?'включён':'выключен'}</span></div>
         <div class="small sec">Приложение будет открываться только после ввода кода${ui.faceAvail?' или по Face ID':''}. Код защищает от чужих глаз; данные по-прежнему хранятся только в телефоне.</div>
         ${lockOn?`<div class="btns two"><button class="btn" data-act="pinChange">Сменить код</button><button class="btn danger" data-act="pinOff">Выключить</button></div>
-          ${ui.faceAvail?(S.lock.cred?'<button class="btn block" data-act="faceOff">🙂 Face ID включён · выключить</button>':'<button class="btn primary block" data-act="faceOn">🙂 Включить Face ID</button>'):''}`
+          ${ui.faceAvail?(S.lock.cred?'<button class="btn block" data-act="faceOff">🙂 Face ID включён · выключить</button>':'<button class="btn primary block" data-act="faceOn">🙂 Включить Face ID</button>'):''}
+          <div class="flabel" style="margin-top:4px">Снова спрашивать, если приложение было свёрнуто</div>
+          <select class="inp" data-bind="lockAfter">${[[0,'сразу'],[5,'через 5 минут'],[30,'через 30 минут']].map(([v,l])=>`<option value="${v}"${(S.lock.after??5)===v?' selected':''}>${l}</option>`).join('')}</select>`
         :'<button class="btn primary block" data-act="pinSet">Поставить код</button>'}
       </div>
       <div class="lockbox">
-        <label class="check" style="margin:0"><input type="checkbox" data-bind="quickAdd"${S.quickAdd?' checked':''}><span><b>⚡ Открывать сразу на новой трате</b><br>Нажал на иконку — и сразу вводишь сумму. Поставь иконку в Dock, и трата будет добавляться в одно касание.</span></label>
+        <label class="check" style="margin:0"><input type="checkbox" data-bind="quickAdd"${S.quickAdd?' checked':''}><span><b>⚡ Открывать сразу на новой трате</b><br>Открыл приложение — и сразу вводишь сумму, без лишних нажатий.</span></label>
       </div>`)}
     ${sec('income','💼 Зарплата и доходы',totalInc?`${money(totalInc)} в месяц`:'не указана — нажми, чтобы указать',`
       <div class="small sec" style="margin-bottom:10px">Сумма «на руки» и число месяца. Если зарплата приходит один раз — оставь вторую строку пустой.</div>
@@ -1720,7 +1867,6 @@ function renderSettings(){
         <button class="btn danger block" data-act="wipe">Удалить все данные</button>
       </div>`)}
     <p class="small muted" style="text-align:center;margin:18px 0 4px">Расходы · версия ${APP_VERSION} · записей: ${S.expenses.length+S.extra.length}</p>
-    <p class="small muted" style="text-align:center;margin:0 0 8px">Designed &amp; built with ☀️ by <b>dzts_w</b></p>
   `;
 }
 
@@ -1736,7 +1882,7 @@ function openSheet(id,type='exp'){
   $('#fDate').value=e?e.date:(isCurMonth(ui.month)?todayStr():`${ui.month}-01`);
   ui.fCat=e&&type==='exp'?e.cat:null; ui.fManual=!!e; ui.fGuess=e&&type==='exp'?guess(e.desc):null;
   $('#fDel').hidden=!e; $('#fType').hidden=!!e;
-  ui.catsShown=false; ui.fAcc=e?.acc||mainAcc()?.id||spendAccs()[0]?.id||null; applyType(); renderAccChips();
+  ui.catsShown=false; ui.fQr=null; ui.fAcc=e?.acc||mainAcc()?.id||spendAccs()[0]?.id||null; applyType(); renderAccChips();
   openPanel('#sheet');
   setTimeout(()=>$('#fAmount').focus(),e?0:300);
 }
@@ -1747,7 +1893,7 @@ function applyType(){
   $('#fDesc').placeholder=inc?'Откуда? Премия, подработка, кэшбэк…':'На что? Булочка, такси, капли в нос…';
   if(!ui.editId)$('#sTitle').textContent=inc?'Новый доход':'Новая трата';
   renderAccChips();
-  $('#fGuess').hidden=inc; $('#catToggle').hidden=inc; $('#fCats').hidden=inc||!ui.catsShown;
+  $('#fGuess').hidden=inc; $('#catToggle').hidden=inc; $('#qrBtn').hidden=!!ui.editId; $('#fCats').hidden=inc||!ui.catsShown;
   renderChips();
 }
 let lastChip=null;
@@ -1769,7 +1915,7 @@ function saveForm(){
   if(ui.fType==='inc'){
     const acc=spendAccs().length>1?ui.fAcc:undefined;
     if(ui.editId)Object.assign(S.extra.find(x=>x.id===ui.editId),{amount,desc,date,acc});
-    else S.extra.push({id:uid(),amount,desc,date,acc,ts:Date.now()});
+    else S.extra.push({id:uid(),amount,desc,date,acc,ts:Date.now(),...(ui.fQr?{qr:ui.fQr}:{})});
     save();closeSheet();if(date.slice(0,7)!==ui.month)ui.month=date.slice(0,7);render();
     haptic('success');confettiAt($('#fab'));toast(`💰 Доход ${money(amount)}`);return;
   }
@@ -1781,7 +1927,7 @@ function saveForm(){
   if(ui.editId){e=S.expenses.find(x=>x.id===ui.editId);
     if(e.cat!==c){delete e.plannedId;delete e.forDue}
     Object.assign(e,{amount,desc,date,cat:c});delete e.demo}
-  else{e={id:uid(),amount,desc,date,cat:c,ts:Date.now()};S.expenses.push(e)}
+  else{e={id:uid(),amount,desc,date,cat:c,ts:Date.now(),...(ui.fQr?{qr:ui.fQr}:{})};S.expenses.push(e)}
   if(spendAccs().length>1)e.acc=ui.fAcc; else delete e.acc;
   autoLink(e);
   save(); closeSheet();
@@ -1966,6 +2112,7 @@ function renderWizard(){
 }
 /* ---------- что нового ---------- */
 const CHANGELOG=[
+  {v:'1.8.0',items:['📷 Скан QR-кода с чека: в новой трате кнопка «Чек» — сумма и дата подставятся сами, повторный чек узнаю','🙂 Face ID запускается сразу при входе','⏱️ Можно выбрать, когда снова спрашивать код: сразу, через 5 или 30 минут','🎨 Темы: «Спокойная» и новая «Официальная» (⚙️ → Профиль)','🔍 Экран больше не приближается при нажатиях','🛠️ Надпись «открыть» в настройках больше не переворачивается']},
   {v:'1.7.1',items:['🤖 Инструкция по установке на Android, а в Chrome — кнопка «Установить приложение» (⚙️ внизу)']},
   {v:'1.7.0',items:['🧭 Мастер первого запуска — всё настраивается за минуту','🔒 Вход по коду и Face ID: ⚙️ → Профиль и вход','🚦 Лимиты по категориям: например, кафе не больше 8 000 в месяц','⚡ Быстрый старт: приложение может открываться сразу на новой трате','🗂️ Настройки разбиты на разделы — нажми на раздел, чтобы открыть','✨ Вот это окно: теперь после обновления расскажу, что нового','🚚 Новый адрес приложения: dztsw.github.io/OOObnal']},
   {v:'1.6.0',items:['💳 Дневной лимит считается от денег на счетах','📅 Разовые и годовые платежи: ДР, годовая подписка','🏦 Ставка и даты кредита, совет по досрочке с экономией на процентах']},
@@ -1976,7 +2123,7 @@ function checkChangelog(){
   const seen=S.seenVersion||'1.6.1'; // у тех, кто пользовался до этой версии, номер ещё не записан
   S.seenVersion=APP_VERSION; save();
   if(cmpV(seen,APP_VERSION)>=0)return false;
-  const list=CHANGELOG.filter(c=>cmpV(c.v,seen)>0).slice(0,2);
+  const list=CHANGELOG.filter(c=>cmpV(c.v,seen)>0).slice(0,3);
   if(!list.length)return false;
   $('#wnVer').textContent=`версия ${APP_VERSION}`;
   $('#wnList').innerHTML=list.map((c,i)=>`${list.length>1?`<div class="grp">${i===0?'Сейчас':'Недавно'} · ${c.v}</div>`:''}<ul class="tips" style="margin:6px 0 12px">${c.items.map(x=>`<li class="info"><span>${esc(x)}</span></li>`).join('')}</ul>`).join('');
@@ -2132,6 +2279,10 @@ document.addEventListener('click',async ev=>{
     keepScroll(renderHome); toast(li&&li.done?`🎉 ${p.name||'Кредит'} полностью выплачен!`:`✓ ${p.name||cat(p.cat).name} оплачен`);return}
   if(t.dataset.day){const d=Number(t.dataset.day);ui.selDay=ui.selDay===d?null:d;haptic();keepScroll(renderHome);return}
   if(t.dataset.pin!=null){pinKey(t.dataset.pin);return}
+  if(t.id==='qrBtn'){openScan();return}
+  if(t.id==='scanClose'){stopScan();return}
+  if(t.id==='scanPhoto'){$('#scanFile').click();return}
+  if(t.dataset.skin){S.skin=t.dataset.skin;applySkin();save();haptic('success');keepScroll(()=>{renderSettings();syncPlanForm()});return}
   if(t.id==='lockFace'){faceUnlock();return}
   if(t.id==='lockAlt'){
     if(document.body.classList.contains('locked')){
@@ -2254,6 +2405,7 @@ document.addEventListener('input',ev=>{
   else if(b==='piggyDays'){const ds=[...new Set((el.value.match(/\d+/g)||[]).map(Number).filter(n=>n>=1&&n<=31))].sort((a,b)=>a-b);S.piggy={...(S.piggy||{}),days:ds}}
   else if(b==='carry'){S.carry=el.checked}
   else if(b==='quickAdd'){S.quickAdd=el.checked}
+  else if(b==='lockAfter'){S.lock={...S.lock,after:+el.value}}
   else if(b==='limitMode'){S.limitMode=el.checked?'balance':'salary';keepScroll(()=>{renderSettings();syncPlanForm()})}
   else if(b==='saveMonthly'){const v=parseAmount(el.value),g=soleGoal(v>0);if(g){g.monthly=v>0?v:0;syncSave()}}
   else if(b==='budget'){const v=parseAmount(el.value);S.budget=v>0?v:0}
@@ -2287,11 +2439,13 @@ document.addEventListener('keydown',ev=>{
   if(ev.key==='Enter'&&ev.target.id==='balIn'){ev.preventDefault();document.querySelector('[data-act="setbal"]').click()}
 });
 $('#scrim').addEventListener('click',()=>{const wn=$('#wsheet').classList.contains('on');closeSheet();if(wn)setTimeout(nextStartup,350)});
+$('#scanFile').addEventListener('change',e=>{const f=e.target.files[0];e.target.value='';if(f){$('#scan').hidden=false;$('#scanMsg').textContent='Ищу QR-код на фото…';scanFromImage(f).catch(()=>{$('#scanMsg').textContent='Не получилось открыть фото'})}});
 $('#importFile').addEventListener('change',e=>{const f=e.target.files[0];if(f)importFile(f);e.target.value=''});
 let hiddenAt=0;
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden){hiddenAt=Date.now();return}
-  if(S?.lock?.pin&&!document.body.classList.contains('locked')&&hiddenAt&&Date.now()-hiddenAt>60000){afterUnlock=null;lockNow();return}
+  const after=(S?.lock?.after??5)*60000||5000; // «сразу» = после 5 секунд вне приложения
+  if(S?.lock?.pin&&!document.body.classList.contains('locked')&&hiddenAt&&Date.now()-hiddenAt>after){afterUnlock=null;lockNow();return}
   if(S&&ui.view!=='settings')render();
   // вернулись в приложение спустя пару минут — сразу окно новой траты
   if(S?.quickAdd&&hiddenAt&&Date.now()-hiddenAt>120000&&!document.querySelector('.sheet.on')&&$('#wiz').hidden)openSheet()});
@@ -2300,6 +2454,7 @@ document.addEventListener('visibilitychange',()=>{
 (async()=>{
   S=freshState(); compileKW();
   S=migrate(await loadState());
+  applySkin();
   if(!needsWizard()&&!S.onboarded)S.onboarded=true; // у кого уже есть данные — мастер не показываем
   if(needsWizard())S.seenVersion=APP_VERSION;
   if(S.lock?.pin)document.body.classList.add('locked');

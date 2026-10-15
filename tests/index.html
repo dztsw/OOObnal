@@ -309,9 +309,33 @@ const tests=[
   ok(t.includes('Android')&&t.includes('Chrome')&&t.includes('Установить приложение'),'нет инструкции для Android');
   ok(t.includes('iPhone')&&t.includes('Safari'),'нет инструкции для iPhone');
 }],
-['Подпись и версия внизу настроек', async()=>{
+['Скан чека: QR с фото → сумма и дата; повторный чек узнаётся', async()=>{
+  const {ev,$}=await app(); baseState(ev);
+  ev('openSheet()'); ok(!$('#qrBtn').hidden,'нет кнопки «Чек»');
+  const r=await ev("scanFromImage('../tests/receipt-qr.png')"); ok(r,'QR на картинке не распознан');
+  eq($('#fAmount').value,'1234,5','сумма из чека'); eq($('#fDate').value,'2026-10-15','дата из чека');
+  $('#fDesc').value='Пятёрочка'; ev('saveForm()'); ok(ev('S.expenses.at(-1).qr'),'чек не запомнился');
+  ev('openSheet()'); await ev("scanFromImage('../tests/receipt-qr.png')"); ok(txt($('#toast')).includes('уже добавлен'),'повторный чек не распознан');
+  const ref=ev("parseReceipt('t=20261001T1200&s=500.00&fn=1&i=2&fp=3&n=2')"); ok(ref.refund&&ref.amount===500,'возврат');
+  eq(ev("parseReceipt('https://example.com')"),null,'обычная ссылка не должна приниматься за чек');
+}],
+['Тема «Официальная»: переключается и запоминается', async()=>{
+  const {ev,$,W}=await app(); ev("go('settings')");
+  $('[data-skin="official"]').click(); eq(W.document.documentElement.dataset.skin,'official','тема не применилась'); eq(ev('S.skin'),'official','тема не запомнилась');
+  const acc=W.getComputedStyle(W.document.documentElement).getPropertyValue('--accent').trim().toLowerCase().slice(0,7);
+  ok(['#0d4cd3','#4d8bff'].includes(acc),'не тот основной цвет (светлая или тёмная): '+acc);
+  $('[data-skin="calm"]').click(); eq(W.document.documentElement.dataset.skin,'calm','не вернулась спокойная');
+}],
+['Разделы: надпись не переворачивается, масштаб выключен', async()=>{
+  const {ev,$,W}=await app(); ev("go('settings')");
+  const d=$('details[data-sec="income"]'); d.open=true; await sleep(100);
+  eq(W.getComputedStyle(d.querySelector('.chev')).transform,'none','стрелка с надписью переворачивается');
+  ok(W.getComputedStyle(d.querySelector('.chev'),'::before').content.includes('свернуть'),'нет «свернуть»');
+  ok(W.document.querySelector('meta[name=viewport]').content.includes('maximum-scale=1'),'масштаб не выключен');
+}],
+['Версия внизу настроек, без подписи', async()=>{
   const {ev,$}=await app(); ev("go('settings')");
-  const t=txt($('#v-settings')); ok(t.includes('версия '+ev('APP_VERSION')),'нет версии'); ok(t.includes('dzts_w'),'нет подписи');
+  const t=txt($('#v-settings')); ok(t.includes('версия '+ev('APP_VERSION')),'нет версии'); ok(!t.includes('Designed')&&!t.includes('dzts_w'),'подпись не убрана');
 }],
 ['Автокатегории: 150+ фраз', async()=>{
   const {ev}=await app();
