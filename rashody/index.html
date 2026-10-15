@@ -583,7 +583,7 @@ const M_DAT=['январю','февралю','марту','апрелю','маю
 const WD=['вс','пн','вт','ср','чт','пт','сб'];
 const DAY=864e5;
 const DEBT_CATS=new Set(['loans','mortgage','installments']);
-const APP_VERSION='1.7.0';
+const APP_VERSION='1.7.1';
 const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------- утилиты ---------- */
@@ -623,6 +623,10 @@ function parseAmount(s){
 }
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('on'),2400)}
 
+/* ---------- установка на Android ---------- */
+let installPrompt=null;
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;if(S&&ui.view==='settings')keepScroll(()=>{renderSettings();syncPlanForm()})});
+addEventListener('appinstalled',()=>{installPrompt=null;toast('📲 Приложение установлено')});
 /* ---------- вход по коду и Face ID ---------- */
 // Код хранится как хеш с солью. Это защита от чужих глаз, а не шифрование данных:
 // данные по-прежнему лежат в памяти телефона в открытом виде.
@@ -1695,9 +1699,17 @@ function renderSettings(){
         <button class="badge${c.kind==='fixed'?' fixed':''}" data-kind="${esc(c.id)}">${c.kind==='fixed'?'обязательная':'повседневная'}</button>
         ${custom.includes(c)?`<button class="x" data-delcat="${esc(c.id)}" aria-label="Удалить категорию">✕</button>`:''}</div>`).join('')}
       <div class="addcat"><input class="inp e" id="ncE" placeholder="🐶" maxlength="4"><input class="inp" id="ncN" placeholder="Новая категория"><button class="btn primary" data-act="addcat">+</button></div>`)}
-    ${standalone?'':`<div class="card howto"><h2>📲 Установка на iPhone</h2><ol>
-      <li>Открой эту страницу в <b>Safari</b></li><li>Нажми «Поделиться» <span aria-hidden="true">⬆️</span></li>
-      <li>Выбери «На экран „Домой“»</li><li>Запускай с иконки — так данные хранятся надёжнее</li></ol></div>`}
+    ${standalone?'':(()=>{const android=/Android/i.test(navigator.userAgent);
+      const ios=`<div class="slabel" style="margin-top:6px">🍏 iPhone</div><ol>
+        <li>Открой эту страницу в <b>Safari</b></li><li>Нажми «Поделиться» <span aria-hidden="true">⬆️</span></li>
+        <li>Выбери «На экран „Домой“»</li><li>Запускай с иконки — так данные хранятся надёжнее</li></ol>`;
+      const andr=`<div class="slabel" style="margin-top:6px">🤖 Android</div><ol>
+        <li>Открой эту страницу в <b>Chrome</b></li><li>Нажми <b>⋮</b> (три точки) справа вверху</li>
+        <li>Выбери «Установить приложение» или «Добавить на главный экран»</li>
+        <li>В Samsung Internet: <b>≡</b> → «Добавить страницу на» → «Главный экран»</li><li>Запускай с иконки — так данные хранятся надёжнее</li></ol>`;
+      return `<div class="card howto"><h2>📲 Установить на телефон</h2>
+        ${installPrompt?'<button class="btn primary block" data-act="install" style="margin-bottom:8px">⬇️ Установить приложение</button>':''}
+        ${android?andr+ios:isIOS?ios+andr:ios+andr}</div>`})()}
     ${sec('data','💾 Резервная копия',`последняя: ${S.lastBackup?new Date(S.lastBackup).toLocaleDateString('ru-RU'):'ещё не было'}`,`
       <p class="small sec" style="margin:0 0 12px">Все данные хранятся только на этом устройстве${persisted?' (хранилище закреплено ✅)':''}.
       Раз в неделю напомню сохранить копию. Сохраняй файл в iCloud Drive или «Файлы».</p>
@@ -1954,6 +1966,7 @@ function renderWizard(){
 }
 /* ---------- что нового ---------- */
 const CHANGELOG=[
+  {v:'1.7.1',items:['🤖 Инструкция по установке на Android, а в Chrome — кнопка «Установить приложение» (⚙️ внизу)']},
   {v:'1.7.0',items:['🧭 Мастер первого запуска — всё настраивается за минуту','🔒 Вход по коду и Face ID: ⚙️ → Профиль и вход','🚦 Лимиты по категориям: например, кафе не больше 8 000 в месяц','⚡ Быстрый старт: приложение может открываться сразу на новой трате','🗂️ Настройки разбиты на разделы — нажми на раздел, чтобы открыть','✨ Вот это окно: теперь после обновления расскажу, что нового','🚚 Новый адрес приложения: dztsw.github.io/OOObnal']},
   {v:'1.6.0',items:['💳 Дневной лимит считается от денег на счетах','📅 Разовые и годовые платежи: ДР, годовая подписка','🏦 Ставка и даты кредита, совет по досрочке с экономией на процентах']},
   {v:'1.5.0',items:['💳 Счета, переводы между ними, «не учитывать в балансе»','🎯 Цели-накопления со сроками','📊 Диаграммы по категориям: список, круг, столбцы']},
@@ -2181,6 +2194,7 @@ document.addEventListener('click',async ev=>{
       S.accounts.push({id:uid(),type:'main',name:'Карта',emoji:'💳',start:v,ts:Date.now(),exclude:false});save();haptic('success');keepScroll(renderHome);toast(`💳 Баланс ${money(v)} записан`);break}
     case 'skipbal':S.balAsked=true;save();keepScroll(renderHome);break;
     case 'transfer':openTransfer();break;
+    case 'install':if(installPrompt){installPrompt.prompt();installPrompt.userChoice.finally(()=>{installPrompt=null;keepScroll(()=>{renderSettings();syncPlanForm()})})}break;
     case 'limAdd':{const c=$('#lCat').value,a=parseAmount($('#lAmt').value);if(!(a>0)){toast('Введи лимит');haptic('warn');$('#lAmt').focus();return}
       S.catLimits={...(S.catLimits||{}),[c]:a};save();haptic('success');keepScroll(()=>{renderSettings();syncPlanForm()});toast(`🚦 ${cat(c).name}: не больше ${money(a)} в месяц`);break}
     case 'wnOk':closeSheet();haptic('success');setTimeout(nextStartup,350);break;

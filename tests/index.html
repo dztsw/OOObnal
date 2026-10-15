@@ -304,6 +304,11 @@ const tests=[
   const {ev,$}=await app(375,812,{query:'&add&a=250&d=кофе'}); baseState(ev); ev('quickOpen()'); await sleep(300);
   ok($('#sheet').classList.contains('on'),'окно траты не открылось'); eq($('#fAmount').value,'250','сумма'); eq(ev('ui.fCat'),'cafe','описание и категория');
 }],
+['Инструкция по установке: iPhone и Android', async()=>{
+  const {ev,$}=await app(); ev("go('settings')"); const t=txt($('#v-settings'));
+  ok(t.includes('Android')&&t.includes('Chrome')&&t.includes('Установить приложение'),'нет инструкции для Android');
+  ok(t.includes('iPhone')&&t.includes('Safari'),'нет инструкции для iPhone');
+}],
 ['Подпись и версия внизу настроек', async()=>{
   const {ev,$}=await app(); ev("go('settings')");
   const t=txt($('#v-settings')); ok(t.includes('версия '+ev('APP_VERSION')),'нет версии'); ok(t.includes('dzts_w'),'нет подписи');
