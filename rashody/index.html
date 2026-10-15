@@ -651,7 +651,7 @@ const M_DAT=['январю','февралю','марту','апрелю','маю
 const WD=['вс','пн','вт','ср','чт','пт','сб'];
 const DAY=864e5;
 const DEBT_CATS=new Set(['loans','mortgage','installments']);
-const APP_VERSION='1.8.0';
+const APP_VERSION='1.8.1';
 const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------- утилиты ---------- */
@@ -1795,7 +1795,8 @@ function renderSettings(){
         <div class="skinsw">
           <button data-skin="calm" class="${S.skin!=='official'?'on':''}"><span class="sw2"><i style="background:#ffb03a"></i><i style="background:#ff6a4d"></i><i style="background:#ff4f8b"></i></span>Спокойная<small>тёплая, солнечная</small></button>
           <button data-skin="official" class="${S.skin==='official'?'on':''}"><span class="sw2"><i style="background:#0d4cd3"></i><i style="background:#fff;border:1px solid #c8d2de"></i><i style="background:#ee3f58"></i></span>Официальная<small>строгая, сине-белая</small></button>
-        </div></div>
+        </div>
+        <div class="small sec" style="margin-top:8px">🌗 Обе темы подстраиваются под тему телефона: если на телефоне светлое оформление — будет светлая, если тёмное — тёмная. Переключается в «Настройки → Экран и яркость» на iPhone или «Экран → Тёмная тема» на Android.</div></div>
       <div class="lockbox">
         <div><b>🔒 Вход по коду</b> <span class="small muted">${lockOn?'включён':'выключен'}</span></div>
         <div class="small sec">Приложение будет открываться только после ввода кода${ui.faceAvail?' или по Face ID':''}. Код защищает от чужих глаз; данные по-прежнему хранятся только в телефоне.</div>
@@ -2112,6 +2113,7 @@ function renderWizard(){
 }
 /* ---------- что нового ---------- */
 const CHANGELOG=[
+  {v:'1.8.1',items:['🌗 Подсказка: обе темы — «Спокойная» и «Официальная» — бывают светлыми и тёмными, как тема телефона']},
   {v:'1.8.0',items:['📷 Скан QR-кода с чека: в новой трате кнопка «Чек» — сумма и дата подставятся сами, повторный чек узнаю','🙂 Face ID запускается сразу при входе','⏱️ Можно выбрать, когда снова спрашивать код: сразу, через 5 или 30 минут','🎨 Темы: «Спокойная» и новая «Официальная» (⚙️ → Профиль)','🔍 Экран больше не приближается при нажатиях','🛠️ Надпись «открыть» в настройках больше не переворачивается']},
   {v:'1.7.1',items:['🤖 Инструкция по установке на Android, а в Chrome — кнопка «Установить приложение» (⚙️ внизу)']},
   {v:'1.7.0',items:['🧭 Мастер первого запуска — всё настраивается за минуту','🔒 Вход по коду и Face ID: ⚙️ → Профиль и вход','🚦 Лимиты по категориям: например, кафе не больше 8 000 в месяц','⚡ Быстрый старт: приложение может открываться сразу на новой трате','🗂️ Настройки разбиты на разделы — нажми на раздел, чтобы открыть','✨ Вот это окно: теперь после обновления расскажу, что нового','🚚 Новый адрес приложения: dztsw.github.io/OOObnal']},
@@ -2123,7 +2125,7 @@ function checkChangelog(){
   const seen=S.seenVersion||'1.6.1'; // у тех, кто пользовался до этой версии, номер ещё не записан
   S.seenVersion=APP_VERSION; save();
   if(cmpV(seen,APP_VERSION)>=0)return false;
-  const list=CHANGELOG.filter(c=>cmpV(c.v,seen)>0).slice(0,3);
+  const list=CHANGELOG.filter(c=>cmpV(c.v,seen)>0).slice(0,5);
   if(!list.length)return false;
   $('#wnVer').textContent=`версия ${APP_VERSION}`;
   $('#wnList').innerHTML=list.map((c,i)=>`${list.length>1?`<div class="grp">${i===0?'Сейчас':'Недавно'} · ${c.v}</div>`:''}<ul class="tips" style="margin:6px 0 12px">${c.items.map(x=>`<li class="info"><span>${esc(x)}</span></li>`).join('')}</ul>`).join('');

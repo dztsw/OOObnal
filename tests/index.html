@@ -281,7 +281,7 @@ const tests=[
 }],
 ['«Что нового»: показывается один раз после обновления', async()=>{
   const {ev,$}=await app(); ev("S.seenVersion='1.6.1'");
-  eq(ev('checkChangelog()'),true,'окно не показано'); ok(txt($('#wnList')).includes('Мастер первого запуска'),'нет пунктов новой версии');
+  eq(ev('checkChangelog()'),true,'окно не показано'); ok(txt($('#wnList')).includes(ev('CHANGELOG[0].items[0]')),'нет пунктов новой версии'); ok(txt($('#wnList')).includes('Мастер первого запуска'),'не показаны пропущенные версии');
   ev('closeSheet()'); eq(ev('checkChangelog()'),false,'показалось второй раз');
 }],
 ['Настройки разделами: закрыты, есть подсказка, раздел раскрывается', async()=>{
