@@ -758,7 +758,7 @@ const M_DAT=['январю','февралю','марту','апрелю','маю
 const WD=['вс','пн','вт','ср','чт','пт','сб'];
 const DAY=864e5;
 const DEBT_CATS=new Set(['loans','mortgage','installments']);
-const APP_VERSION='1.10.0';
+const APP_VERSION='1.10.1';
 const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------- утилиты ---------- */
@@ -2175,7 +2175,7 @@ function renderSettings(){
         <button class="badge${c.kind==='fixed'?' fixed':''}" data-kind="${esc(c.id)}">${c.kind==='fixed'?'обязательная':'повседневная'}</button>
         ${custom.includes(c)?`<button class="x" data-delcat="${esc(c.id)}" aria-label="Удалить категорию">✕</button>`:''}</div>`).join('')}
       <div class="addcat"><input class="inp e" id="ncE" placeholder="🐶" maxlength="4"><input class="inp" id="ncN" placeholder="Новая категория"><button class="btn primary" data-act="addcat">+</button></div>`)}
-    ${standalone?'':(()=>{const android=/Android/i.test(navigator.userAgent);
+    ${(()=>{const android=/Android/i.test(navigator.userAgent);
       const ios=`<div class="slabel" style="margin-top:6px">🍏 iPhone</div><ol>
         <li>Открой эту страницу в <b>Safari</b></li><li>Нажми «Поделиться» <span aria-hidden="true">⬆️</span></li>
         <li>Выбери «На экран „Домой“»</li><li>Запускай с иконки — так данные хранятся надёжнее</li></ol>`;
@@ -2183,9 +2183,11 @@ function renderSettings(){
         <li>Открой эту страницу в <b>Chrome</b></li><li>Нажми <b>⋮</b> (три точки) справа вверху</li>
         <li>Выбери «Установить приложение» или «Добавить на главный экран»</li>
         <li>В Samsung Internet: <b>≡</b> → «Добавить страницу на» → «Главный экран»</li><li>Запускай с иконки — так данные хранятся надёжнее</li></ol>`;
-      return `<div class="card howto"><h2>📲 Установить на телефон</h2>
+      // инструкции для обеих платформ — отдельным раскрывающимся разделом, всегда
+      return sec('install','📲 Установка на телефон',standalone?'приложение уже установлено ✅':'инструкция для iPhone и Android',`<div class="howto">
         ${installPrompt?'<button class="btn primary block" data-act="install" style="margin-bottom:8px">⬇️ Установить приложение</button>':''}
-        ${android?andr+ios:isIOS?ios+andr:ios+andr}</div>`})()}
+        ${android?andr+ios:ios+andr}
+        <div class="small sec" style="margin-top:8px">Ссылка на приложение: <b>dztsw.github.io/OOObnal</b> — можно отправить друзьям.</div></div>`)})()}
     ${sec('data','💾 Резервная копия',`последняя: ${S.lastBackup?new Date(S.lastBackup).toLocaleDateString('ru-RU'):'ещё не было'}`,`
       <p class="small sec" style="margin:0 0 12px">Все данные хранятся только на этом устройстве${persisted?' (хранилище закреплено ✅)':''}.
       Раз в неделю напомню сохранить копию. Сохраняй файл в iCloud Drive или «Файлы».</p>
@@ -2197,6 +2199,7 @@ function renderSettings(){
         <button class="btn danger block" data-act="wipe">Удалить все данные</button>
       </div>`)}
     <p class="small muted" style="text-align:center;margin:18px 0 4px">Расходы · версия ${APP_VERSION} · записей: ${S.expenses.length+S.extra.length}</p>
+    <p class="small muted" style="text-align:center;margin:0 0 8px">Developed &amp; released by <b>dzts_w</b></p>
   `;
 }
 
@@ -2572,6 +2575,7 @@ function payAnswer(status,amount){
 }
 /* ---------- что нового ---------- */
 const CHANGELOG=[
+  {v:'1.10.1',items:['📲 Инструкция по установке для iPhone и Android — отдельным разделом в ⚙️ настройках']},
   {v:'1.10.0',items:['📖 «Что нового» теперь в формате сторис — по одному пункту на слайд','⭕ Кружки сверху на главной: обновление, итоги месяца и «спасибо» с контактами для идей','💼 В день зарплаты спрошу, пришла ли она и та ли сумма. Пришло другое — пересчитаю лимит и накопления. Ещё не пришла — буду спрашивать каждый день и пока не учитывать её']},
   {v:'1.9.1',items:['🎙️ Подсказка, как говорить: «булочка — 250 рублей», по одной покупке','🔢 Сумма теперь достаётся, даже если продиктовать через микрофон клавиатуры','💱 Валюта — в кружочке с бегущим кольцом и своим красивым меню с флагами']},
   {v:'1.9.0',items:['🎬 Итоги месяца в формате сторис — с шутками по твоим тратам. Покажу в последний день месяца, а ещё есть кнопка на карточке месяца','📅 Календарь в «Истории»: дни в норме, близко к лимиту и за пределами','🎙️ Голосовой ввод: скажи «кофе двести пятьдесят»','🔁 Сам найду регулярные платежи и предложу добавить их в обязательные («Советы»)','🏦 Импорт выписки из банка (CSV): ⚙️ → Резервная копия','💱 Траты в другой валюте с курсом ЦБ — для поездок']},

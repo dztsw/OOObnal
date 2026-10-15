@@ -425,9 +425,13 @@ const tests=[
   eq($('#curGrid').querySelectorAll('button').length,ev('CURS.length'),'не все валюты'); $('[data-cur="USD"]').click();
   eq($('#fCur').value,'USD','валюта не выбрана'); ok($('#curPick').hidden,'меню не закрылось'); eq($('#curBtn').textContent,'$','символ в кружке'); ok($('#curBtn').classList.contains('fx'),'кружок не подсветился');
 }],
-['Версия внизу настроек, без подписи', async()=>{
+['Внизу настроек: версия и подпись «Developed & released by dzts_w»', async()=>{
   const {ev,$}=await app(); ev("go('settings')");
-  const t=txt($('#v-settings')); ok(t.includes('версия '+ev('APP_VERSION')),'нет версии'); ok(!t.includes('Designed')&&!t.includes('dzts_w'),'подпись не убрана');
+  const t=txt($('#v-settings')); ok(t.includes('версия '+ev('APP_VERSION')),'нет версии'); ok(t.includes('Developed & released by dzts_w'),'нет подписи'); ok(!t.includes('Designed')&&!t.includes('☀️ by'),'осталась старая подпись');
+}],
+['Установка: отдельный раздел с iPhone и Android', async()=>{
+  const {ev,$}=await app(); ev("go('settings')"); const d=$('details[data-sec="install"]'); ok(d,'нет раздела установки');
+  const t=txt(d); ok(t.includes('iPhone')&&t.includes('Safari')&&t.includes('Android')&&t.includes('Chrome'),'нет инструкций для обеих платформ');
 }],
 ['Автокатегории: 150+ фраз', async()=>{
   const {ev}=await app();
