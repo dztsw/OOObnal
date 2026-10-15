@@ -513,7 +513,7 @@ const M_DAT=['январю','февралю','марту','апрелю','маю
 const WD=['вс','пн','вт','ср','чт','пт','сб'];
 const DAY=864e5;
 const DEBT_CATS=new Set(['loans','mortgage','installments']);
-const APP_VERSION='1.5.0';
+const APP_VERSION='1.6.0';
 const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------- утилиты ---------- */
@@ -699,17 +699,51 @@ function linkedPayment(p,due){ // оплачен ли обязательный �
   const from=ymd(new Date(due-25*DAY)), to=ymd(new Date(+due+25*DAY));
   return S.expenses.find(x=>x.plannedId===p.id&&x.date>=from&&x.date<=to&&(!x.forDue||x.forDue===ymd(due)));
 }
-// Остаток по кредиту: «сколько осталось» на момент ввода минус платежи после этого
+// Периодичность обязательного платежа: каждый месяц (по числу), раз в год или один раз (по дате)
+const freqOf=p=>p.freq||'month';
+function planDates(p,ref){
+  const f=freqOf(p);
+  if(f==='once')return p.date?[parseD(p.date)]:[];
+  if(f==='year'){if(!p.date)return [];const d0=parseD(p.date);
+    return [-1,0,1].map(k=>dateOnDay(ref.getFullYear()+k,d0.getMonth(),d0.getDate())).filter(d=>d>=d0)}
+  return p.day>=1?occurrences(p.day,ref,-1,1):[];
+}
+function planWhen(p){
+  const f=freqOf(p);
+  if(f==='once')return p.date?`${fmtDs(p.date)} ${p.date.slice(0,4)} · разово`:'разово';
+  if(f==='year')return p.date?`каждый год ${fmtDs(p.date)}`:'раз в год';
+  return `${p.day} числа`;
+}
+// Кредит: остаток из «сколько осталось» (минус платежи после ввода) или по дате окончания
 function loanInfo(p){
-  if(!(p.total>0))return null;
-  const paid=sum(S.expenses.filter(x=>x.plannedId===p.id&&(x.ts||0)>(p.totalTs||0)));
-  const left=Math.max(0,p.total-paid), n=p.amount>0?Math.ceil(left/p.amount-1e-9):0;
+  if(freqOf(p)!=='month'||!(p.amount>0))return null;
   const t=sod(new Date());
   const nextDue=occurrences(p.day,t,-1,2).find(d=>!linkedPayment(p,d)&&d>=new Date(t-20*DAY))||t;
-  const last=n>0?dateOnDay(nextDue.getFullYear(),nextDue.getMonth()+n-1,p.day):null;
-  return {paid,left,n,last,done:left<=0,share:p.total?paid/p.total:0};
+  let paid=0,left,n,last,est=false;
+  if(p.total>0){
+    paid=sum(S.expenses.filter(x=>x.plannedId===p.id&&(x.ts||0)>(p.totalTs||0)));
+    left=Math.max(0,p.total-paid); n=Math.ceil(left/p.amount-1e-9);
+    last=n>0?dateOnDay(nextDue.getFullYear(),nextDue.getMonth()+n-1,p.day):null;
+  }else if(p.end){
+    const e=parseD(p.end); n=0;
+    for(let k=0;k<600;k++){if(dateOnDay(nextDue.getFullYear(),nextDue.getMonth()+k,p.day)>e)break;n++}
+    left=n*p.amount; last=n>0?e:null; est=true;
+  }else return null;
+  return {paid,left,n,last,est,done:left<=0,share:p.total?paid/p.total:0};
 }
-const activePlanned=()=>S.planned.filter(p=>p.amount>0&&!loanInfo(p)?.done);
+// Основной долг по ставке: известный остаток или оценка по числу оставшихся платежей
+function loanPrincipal(p,li){
+  const r=(+p.rate||0)/1200; if(!li)return null;
+  if(p.total>0)return li.left;
+  return r>0?p.amount*(1-Math.pow(1+r,-li.n))/r:li.left;
+}
+function monthsToRepay(B,P,r){ // сколько месяцев гасить долг B платежом P при месячной ставке r
+  if(P<=0)return Infinity; if(r<=0)return Math.ceil(B/P-1e-9);
+  const x=1-r*B/P; return x<=0?Infinity:Math.ceil(-Math.log(x)/Math.log(1+r)-1e-9);
+}
+const activePlanned=()=>S.planned.filter(p=>p.amount>0&&freqOf(p)==='month'&&!loanInfo(p)?.done);
+// сколько обязательных в среднем за месяц: ежемесячные + годовые/12
+const plannedMonthly=()=>activePlanned().reduce((s,p)=>s+p.amount,0)+S.planned.filter(p=>freqOf(p)==='year'&&p.amount>0).reduce((s,p)=>s+p.amount/12,0);
 const debtLeft=d=>Math.max(0,d.amount-sum(d.returns||[]));
 
 /* ---------- счета и цели ---------- */
@@ -765,7 +799,7 @@ const openDebts=dir=>S.debts.filter(d=>(!dir||d.dir===dir)&&debtLeft(d)>0);
 /* ---------- копилка: сколько можно откладывать ---------- */
 function saveAdvice(){
   const inc=monthlyIncome(); if(!inc)return null;
-  const fixed=activePlanned().reduce((s,p)=>s+p.amount,0);
+  const fixed=Math.round(plannedMonthly());
   // повседневные траты в месяц: по последним 60 дням (не меньше 7 дней наблюдений)
   const since=ymd(new Date(Date.now()-60*DAY)), T=todayStr();
   const v=S.expenses.filter(e=>!e.debtId&&!e.plannedId&&!isFixed(e.cat)&&e.date>=since&&e.date<=T);
@@ -819,12 +853,14 @@ function period(now=new Date(),depth=0){
   const exps=S.expenses.filter(x=>inP(x.date));
   const extra=S.extra.filter(x=>inP(x.date));
   const due=[], onPayday=[];
-  for(const p of S.planned){ if(!(p.amount>0)||!(p.day>=1))continue;
+  for(const p of S.planned){ if(!(p.amount>0))continue;
     const li=loanInfo(p); if(li&&li.done)continue; // кредит закрыт — больше не резервируем
-    for(const d of occurrences(p.day,start,-1,1)){
+    for(const d of planDates(p,start)){
       if(d>=start&&d<next)due.push({p,d,paid:linkedPayment(p,d)});
       // платёж в день следующей выплаты показываем, но платится он уже из новых денег
       else if(+d===+next)onPayday.push({p,d,paid:linkedPayment(p,d)});
+      // просроченный разовый платёж держим в резерве, пока не оплачен
+      else if(freqOf(p)==='once'&&d<start&&d>=new Date(start-45*DAY)&&!linkedPayment(p,d))due.push({p,d,paid:null});
     } }
   due.sort((a,b)=>a.d-b.d);
   const owe=openDebts('in').filter(d=>d.due&&d.due<N0).map(d=>({d,left:debtLeft(d)}));
@@ -842,18 +878,28 @@ function period(now=new Date(),depth=0){
       carry=Math.max(0,Math.round(pp.free+pp.reserve+pp.oweSum));
     }
   }
-  const free=income+carry+extraSum-saveAmt-spent-reserve-oweSum;
   const daysLeft=Math.max(1,Math.round((next-t)/DAY));
-  const spentToday=sum(exps.filter(x=>x.date===T&&!x.plannedId&&!x.debtId));
+  // Режим «от баланса»: если указан основной счёт, считаем от реальных денег на счетах
+  const balMode=!!mainAcc()&&S.limitMode!=='salary'&&depth===0;
+  let free, bal=0, saveFuture=0;
+  if(balMode){
+    bal=spendAccs().filter(a=>!a.exclude).reduce((s,a)=>s+accBalance(a),0);
+    // отчисления в цели, которые ещё будут до следующей выплаты (прошедшие уже списаны со счёта)
+    for(const e of goalShares())for(const d of occurrences(e.d,t,0,1))if(d>t&&d<next)saveFuture+=(+S.saveMonthly||0)*e.val;
+    saveFuture=Math.round(saveFuture);
+    free=bal-reserve-oweSum-saveFuture; carry=0;
+  }else free=income+carry+extraSum-saveAmt-spent-reserve-oweSum;
+  const excluded=new Set(S.accounts.filter(a=>a.exclude).map(a=>a.id));
+  const spentToday=sum(exps.filter(x=>x.date===T&&!x.plannedId&&!x.debtId&&!(balMode&&excluded.has(x.acc))));
   const limit=(free+spentToday)/daysLeft;
   const limitFor=save=>(free+saveAmt-save+spentToday)/daysLeft; // лимит при другой сумме копилки за эту выплату
-  return {start,next,income,startNames,nextNames,exps,extra,extraSum,carry,due,onPayday,owe,oweSum,spent,saveAmt,reserve,free,daysLeft,spentToday,limit,limitFor,todayLeft:limit-spentToday};
+  return {mode:balMode?'balance':'salary',bal,saveFuture,start,next,income,startNames,nextNames,exps,extra,extraSum,carry,due,onPayday,owe,oweSum,spent,saveAmt,reserve,free,daysLeft,spentToday,limit,limitFor,todayLeft:limit-spentToday};
 }
 function autoLink(e){ // привязать трату к обязательному платежу той же категории
-  if(e.plannedId||e.debtId||!isFixed(e.cat))return;
+  if(e.plannedId||e.debtId)return;
   const ed=parseD(e.date); let best=null,bd=Infinity;
-  for(const p of S.planned){ if(p.cat!==e.cat)continue;
-    for(const d of occurrences(p.day,ed,-1,1)){ if(Math.abs(d-ed)>25*DAY||linkedPayment(p,d))continue;
+  for(const p of S.planned){ if(p.cat!==e.cat||(freqOf(p)==='month'&&!isFixed(e.cat)))continue;
+    for(const d of planDates(p,ed)){ if(Math.abs(d-ed)>25*DAY||linkedPayment(p,d))continue;
       const diff=Math.abs(p.amount-e.amount)+Math.abs(d-ed)/DAY; if(diff<bd){bd=diff;best={p,d}} } }
   if(best){e.plannedId=best.p.id;e.forDue=ymd(best.d)}
 }
@@ -891,22 +937,29 @@ function insights(k){
     if(!m&&A&&A.rec>0)out.push({t:'info',i:'🐷',x:`По твоим тратам можно спокойно откладывать <b>~${money(A.rec)} в месяц</b>. Включи копилку в настройках ⚙️ — сразу учту её в дневном лимите.`});
     else if(m&&A&&A.varM!=null&&A.free<m)out.push({t:'warn',i:'🐷',x:`Копилка ${money(m)}/мес больше, чем реально остаётся (~${money(Math.max(0,A.free))}). Лучше уменьшить до ~${money(A.rec)}, иначе к концу месяца придётся брать из неё.`});
     else if(m)out.push({t:'good',i:'🐷',x:`Откладываешь <b>${money(m)} в месяц</b>${pg.known?`, в копилке ~${money(pg.sum)}`:''}. За год соберётся ~${money(m*12+(pg.known?pg.sum:0))}.${A&&A.varM!=null&&A.rec>m?` По тратам можно и ${money(A.rec)}.`:''}`});
+    if(P)for(const {p,d} of soonOnce(P))if(p.amount>=(P.limit||0)*3)
+      out.push({t:'info',i:'📅',x:`${fmtD(d)} — «${esc(p.name)}» на <b>${money(p.amount)}</b>. Учту в том периоде, но лучше не тратить сейчас всё до копейки.`});
     // цели с отставанием от графика
     for(const g of goals()){const gi=goalInfo(g);
       if(gi.late)out.push({t:'warn',i:'🎯',x:`Цель «${esc(g.name)}»: чтобы собрать ${money(gi.target)} к ${fmtDs(g.deadline)}, нужно <b>${money(gi.need)}/мес</b>, а откладываешь ${money(gi.m)}. Подними сумму или сдвинь срок.`});
       else if(gi.done)out.push({t:'good',i:'🎉',x:`Цель «${esc(g.name)}» достигнута — ${money(gi.cur)}! Можно ставить новую.`});}
     // досрочное погашение: свободные деньги после копилки — в самый маленький долг («снежный ком»)
-    const loans=S.planned.map(p=>({p,li:loanInfo(p)})).filter(x=>x.li&&!x.li.done&&x.li.n>1&&DEBT_CATS.has(x.p.cat)).sort((a,b)=>a.li.left-b.li.left);
+    // если известны ставки — гасим самый дорогой («лавина»), иначе самый маленький («снежный ком»)
+    const loans=S.planned.map(p=>({p,li:loanInfo(p)})).filter(x=>x.li&&!x.li.done&&x.li.n>1&&DEBT_CATS.has(x.p.cat));
+    const byRate=loans.some(x=>x.p.rate>0);
+    loans.sort((a,b)=>byRate?(+b.p.rate||0)-(+a.p.rate||0):a.li.left-b.li.left);
     const spare=A&&A.varM!=null?A.free-m:0;
     if(loans.length&&spare>=1000){
-      const x=loans[0], extra=Math.min(r500(spare*.5),Math.max(500,r500(x.li.left-x.p.amount)));
-      const n2=Math.ceil(x.li.left/(x.p.amount+extra)), saved=x.li.n-n2;
-      if(extra>0&&saved>0)out.push({t:'info',i:'🚀',x:`<b>Быстрее закрыть «${esc(x.p.name||cat(x.p.cat).name)}»:</b> вноси на <b>${money(extra)}</b> больше — ${money(x.p.amount+extra)} вместо ${money(x.p.amount)}. Закроешь за ${n2} ${plural(n2,['месяц','месяца','месяцев'])} вместо ${x.li.n} — на ${saved} ${plural(saved,['месяц','месяца','месяцев'])} раньше. Начинай с самого маленького долга, а если знаешь ставки — с самой дорогой. В банке попроси направить досрочку в уменьшение срока.`});
-    }else if(S.planned.some(p=>DEBT_CATS.has(p.cat)&&p.amount>0&&!(p.total>0)))
+      const x=loans[0], r=(+x.p.rate||0)/1200, B=loanPrincipal(x.p,x.li);
+      const extra=Math.min(r500(spare*.5),Math.max(500,r500(B-x.p.amount)));
+      const n1=r>0?monthsToRepay(B,x.p.amount,r):x.li.n, n2=monthsToRepay(B,x.p.amount+extra,r), saved=n1-n2;
+      const interest=r>0&&isFinite(n1)&&isFinite(n2)?Math.round((n1*x.p.amount-B)-(n2*(x.p.amount+extra)-B)):0;
+      if(extra>0&&saved>0&&isFinite(n1))out.push({t:'info',i:'🚀',x:`<b>Быстрее закрыть «${esc(x.p.name||cat(x.p.cat).name)}»${x.p.rate?` (${String(x.p.rate).replace('.',',')}%)`:''}:</b> вноси на <b>${money(extra)}</b> больше — ${money(x.p.amount+extra)} вместо ${money(x.p.amount)}. Закроешь за ${n2} ${plural(n2,['месяц','месяца','месяцев'])} вместо ${n1} — на ${saved} ${plural(saved,['месяц','месяца','месяцев'])} раньше${interest>500?`, на процентах сэкономишь <b>~${money(interest)}</b>`:''}. ${byRate?'Сначала гаси кредит с самой высокой ставкой.':'Начинай с самого маленького долга; укажи ставки — посоветую точнее.'} В банке попроси направить досрочку в уменьшение срока.`});
+    }else if(S.planned.some(p=>DEBT_CATS.has(p.cat)&&p.amount>0&&freqOf(p)==='month'&&!(p.total>0)&&!p.end))
       out.push({t:'info',i:'🚀',x:'Укажи во вкладке «Счета», сколько всего осталось по кредитам — подскажу, сколько докладывать сверху, чтобы закрыть их быстрее.'});
   }
   // баланс на счетах меньше, чем по расчёту осталось свободных денег — значит, не все траты записаны
-  if(P&&mainAcc()&&cur){const bal=spendAccs().filter(a=>!a.exclude).reduce((s,a)=>s+accBalance(a),0);
+  if(P&&P.mode==='salary'&&mainAcc()&&cur){const bal=spendAccs().filter(a=>!a.exclude).reduce((s,a)=>s+accBalance(a),0);
     if(bal<P.free+P.reserve-1000)out.push({t:'warn',i:'🔍',x:`На счетах ${money(bal)}, а по расчёту должно быть не меньше ${money(P.free+P.reserve)}. Похоже, какие-то траты не записаны — или поправь баланс во вкладке «Счета».`});}
   if(!exps.length){
     out.push({t:'info',i:'✍️',x:'Пока нет трат за этот месяц. Нажми <b>+</b>, впиши сумму и на что потратил — категорию подберу сам.'});
@@ -968,6 +1021,7 @@ function render(){
   document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.v===ui.view));
   for(const v of ['home','history','debts','tips','settings'])$('#v-'+v).hidden=ui.view!==v;
   ({home:renderHome,history:renderHistory,debts:renderDebts,tips:renderTips,settings:renderSettings})[ui.view]();
+  if(ui.view==='settings')syncPlanForm();
   // анимация появления карточек — только при смене вкладки
   const sec=$('#v-'+ui.view);
   if(ui.lastView!==ui.view){sec.classList.remove('enter');void sec.offsetWidth;sec.classList.add('enter');
@@ -1002,7 +1056,8 @@ function payCard(){
     <p class="sec" style="margin:0 0 12px;font-size:15px">Укажи аванс и зарплату, а ещё обязательные платежи — буду каждый день считать, сколько можно потратить до следующей выплаты.</p>
     <button class="btn primary block" data-goto="settings">Указать зарплату</button></div>`;
   const neg=P.free<0, over=P.todayLeft<0;
-  const inAll=P.income+P.extraSum+P.carry, used=inAll>0?(P.spent+P.reserve+P.saveAmt+P.oweSum)/inAll:1;
+  const inAll=P.income+P.extraSum+P.carry;
+  const used=P.mode==='balance'?(P.spent+Math.max(0,P.free)>0?P.spent/(P.spent+Math.max(0,P.free)):1):inAll>0?(P.spent+P.reserve+P.saveAmt+P.oweSum)/inAll:1;
   const periodDays=Math.round((P.next-P.start)/DAY), passed=periodDays-P.daysLeft+1;
   // мелкая строчка про копилку и пересчёт лимита
   let piggy='';
@@ -1021,9 +1076,19 @@ function payCard(){
     <div class="delta">${neg?'с учётом обязательных платежей':`лимит на день <b>${money(Math.max(0,P.limit))}</b>`} · ещё ${days(P.daysLeft)} до ${fmtD(P.next)} (${esc(P.nextNames.join(' + ').toLowerCase())})</div>
     <div class="progress" role="img" aria-label="Использовано ${Math.round(used*100)}% денег периода"><i style="width:${Math.min(100,Math.max(0,used*100))}%"></i></div>
     <div class="budget-row"><span>свободно до зарплаты <b>${money(Math.max(0,P.free))}</b></span><span>день ${passed} из ${periodDays}</span></div>
-    ${P.extraSum||P.carry?`<div class="budget-row" style="margin-top:4px">${P.extraSum?`<span>💰 доп. доходы <b>+${money(P.extraSum)}</b></span>`:''}${P.carry?`<span>↪ с прошлого периода <b>+${money(P.carry)}</b></span>`:''}</div>`:''}
+    ${P.mode==='balance'?`<div class="budget-row" style="margin-top:4px"><span>💳 считаю от денег на счетах: <b>${money(P.bal)}</b></span></div>`:''}
+    ${P.mode!=='balance'&&(P.extraSum||P.carry)?`<div class="budget-row" style="margin-top:4px">${P.extraSum?`<span>💰 доп. доходы <b>+${money(P.extraSum)}</b></span>`:''}${P.carry?`<span>↪ с прошлого периода <b>+${money(P.carry)}</b></span>`:''}</div>`:''}
     ${piggy}
-    <details class="calc"><summary>Как считается ▾</summary><table>
+    <details class="calc"><summary>Как считается ▾</summary><table>${P.mode==='balance'?`
+      <tr><td>На счетах сейчас</td><td>${money(P.bal)}</td></tr>
+      ${P.reserve?`<tr><td>Ещё не оплачены обязательные</td><td>−${money(P.reserve)}</td></tr>`:''}
+      ${P.oweSum?`<tr><td>Вернуть долги до зарплаты</td><td>−${money(P.oweSum)}</td></tr>`:''}
+      ${P.saveFuture?`<tr><td>Отложить в копилку до ${fmtD(P.next)}</td><td>−${money(P.saveFuture)}</td></tr>`:''}
+      <tr class="tot"><td>Свободно до ${fmtD(P.next)}</td><td>${money(P.free)}</td></tr>
+      ${P.spentToday?`<tr><td>+ уже потрачено сегодня</td><td>+${money(P.spentToday)}</td></tr>`:''}
+      <tr><td>÷ ${days(P.daysLeft)} (включая сегодня)</td><td>${money(Math.max(0,P.free+P.spentToday)/P.daysLeft)}/день</td></tr>
+      <tr><td colspan="2" class="small" style="opacity:.85;padding-top:8px">Режим «от баланса». Переключить на расчёт от зарплаты можно в настройках ⚙️.</td></tr>
+    </table></details>`:`
       <tr><td>${esc(P.startNames.join(' + '))} ${fmtD(P.start)}</td><td>+${money(P.income)}</td></tr>
       ${P.carry?`<tr><td>Остаток с прошлого периода</td><td>+${money(P.carry)}</td></tr>`:''}
       ${P.extra.map(x=>`<tr><td>💰 ${esc(x.desc||'Доп. доход')}, ${fmtDs(x.date)}</td><td>+${money(x.amount)}</td></tr>`).join('')}
@@ -1033,33 +1098,44 @@ function payCard(){
       <tr><td>Уже потрачено с ${fmtD(P.start)}</td><td>−${money(P.spent)}</td></tr>
       <tr class="tot"><td>Свободно до ${fmtD(P.next)}</td><td>${money(P.free)}</td></tr>
       <tr><td>÷ ${days(P.daysLeft)} (включая сегодня)</td><td>${money(Math.max(0,P.free+P.spentToday)/P.daysLeft)}/день</td></tr>
-    </table></details>
+    </table></details>`}
   </div>`;
 }
+function soonOnce(P){ // разовые и годовые в ближайшие 60 дней после следующей выплаты
+  const lim=new Date(+P.next+60*DAY);
+  return S.planned.filter(p=>freqOf(p)!=='month'&&p.amount>0).flatMap(p=>planDates(p,P.next).filter(d=>d>P.next&&d<=lim&&!linkedPayment(p,d)).map(d=>({p,d}))).sort((a,b)=>a.d-b.d);
+}
+function soonHtml(P){
+  const list=soonOnce(P); if(!list.length)return '';
+  return `<div class="grp" style="margin-top:12px">Скоро · разовые и годовые</div>${list.map(({p,d})=>`<div class="prow"><span class="em">${cat(p.cat).emoji}</span>
+    <span class="tx"><div class="d1">${esc(p.name||cat(p.cat).name)}</div><div class="d2">${fmtD(d)} · через ${days(Math.round((d-sod(new Date()))/DAY))} — учту в том периоде</div></span>
+    <span class="am num">${money(p.amount)}</span></div>`).join('')}`;
+}
 function plannedCard(){
-  const P=period(); if(!P||(!P.due.length&&!P.onPayday.length))return '';
+  const P=period(); if(!P||(!P.due.length&&!P.onPayday.length&&!soonOnce(P).length))return '';
   const t=sod(new Date());
   const all=P.due.reduce((s,x)=>s+(x.paid?x.paid.amount:x.p.amount),0);
   const paidSum=P.due.filter(x=>x.paid).reduce((s,x)=>s+x.paid.amount,0);
   const nPaid=P.due.filter(x=>x.paid).length;
   if(!P.due.length)return `<div class="card"><h2>📌 Обязательные до зарплаты</h2><div class="small sec">До ${fmtD(P.next)} обязательных платежей нет 🎉</div>
-    <div class="grp" style="margin-top:12px">В день зарплаты · ${fmtD(P.next)} · из новых денег</div>${P.onPayday.map(({p,d,paid})=>`
+    ${P.onPayday.length?`<div class="grp" style="margin-top:12px">В день зарплаты · ${fmtD(P.next)} · из новых денег</div>`:''}${P.onPayday.map(({p,d,paid})=>`
       <div class="prow${paid?' paid':''}"><span class="em">${cat(p.cat).emoji}</span>
       <span class="tx"><div class="d1">${esc(p.name||cat(p.cat).name)}</div><div class="d2">${fmtD(d)}</div></span>
-      <span class="am num">${money(paid?paid.amount:p.amount)}<br>${paid?'<span class="ok">✓ оплачено</span>':`<button class="pay-btn" data-pay="${p.id}" data-due="${ymd(d)}">Оплатил</button>`}</span></div>`).join('')}</div>`;
+      <span class="am num">${money(paid?paid.amount:p.amount)}<br>${paid?'<span class="ok">✓ оплачено</span>':`<button class="pay-btn" data-pay="${p.id}" data-due="${ymd(d)}">Оплатил</button>`}</span></div>`).join('')}${soonHtml(P)}</div>`;
   return `<div class="card"><h2>📌 Обязательные до зарплаты</h2>
     <div class="ptotal"><span>Всего <b>${money(all)}</b></span><span>${P.reserve?`к оплате <b>${money(P.reserve)}</b> · ${nPaid}/${P.due.length}`:'<span class="ok">✓ всё оплачено</span>'}</span></div>
     ${P.due.map(({p,d,paid},i)=>{
     const li=loanInfo(p);
     return `<div class="prow${paid?' paid':''}${i===0?' first':''}"><span class="em">${cat(p.cat).emoji}</span>
       <span class="tx"><div class="d1">${esc(p.name||cat(p.cat).name)}</div>
-      <div class="d2${!paid&&d<t?' late':''}">${fmtD(d)}${!paid&&d<t?' · срок прошёл':''}${li?` · осталось ${money(li.left)}`:''}</div></span>
+      <div class="d2${!paid&&d<t?' late':''}">${fmtD(d)}${freqOf(p)==='once'?' · разово':freqOf(p)==='year'?' · раз в год':''}${!paid&&d<t?' · срок прошёл':''}${li?` · осталось ${money(li.left)}`:''}</div></span>
       <span class="am num">${money(paid?paid.amount:p.amount)}<br>${paid?'<span class="ok">✓ оплачено</span>':`<button class="pay-btn" data-pay="${p.id}" data-due="${ymd(d)}">Оплатил</button>`}</span>
     </div>`}).join('')}
     ${P.onPayday.length?`<div class="grp" style="margin-top:12px">В день зарплаты · ${fmtD(P.next)} · из новых денег</div>${P.onPayday.map(({p,d,paid})=>`
       <div class="prow${paid?' paid':''}"><span class="em">${cat(p.cat).emoji}</span>
       <span class="tx"><div class="d1">${esc(p.name||cat(p.cat).name)}</div><div class="d2">${fmtD(d)} · в лимит до зарплаты не входит</div></span>
       <span class="am num">${money(paid?paid.amount:p.amount)}<br>${paid?'<span class="ok">✓ оплачено</span>':`<button class="pay-btn" data-pay="${p.id}" data-due="${ymd(d)}">Оплатил</button>`}</span></div>`).join('')}`:''}
+    ${soonHtml(P)}
     </div>`;
 }
 function balanceCard(){
@@ -1236,7 +1312,7 @@ function renderHistory(){
 }
 
 function renderDebts(){
-  const loans=S.planned.filter(p=>DEBT_CATS.has(p.cat)&&p.amount>0);
+  const loans=S.planned.filter(p=>DEBT_CATS.has(p.cat)&&p.amount>0&&freqOf(p)==='month');
   const infos=loans.map(p=>({p,li:loanInfo(p)}));
   const loanLeft=infos.reduce((s,x)=>s+(x.li?x.li.left:0),0);
   const owedToMe=openDebts('out').reduce((s,d)=>s+debtLeft(d),0), iOwe=openDebts('in').reduce((s,d)=>s+debtLeft(d),0);
@@ -1284,11 +1360,12 @@ function renderDebts(){
     <div class="card"><h2>🏦 Кредиты и рассрочки</h2>
       ${loans.length?infos.map(({p,li},i)=>`<div class="prow${i===0?' first':''}" style="align-items:flex-start"><span class="em">${cat(p.cat).emoji}</span>
         <span class="tx"><div class="d1">${esc(p.name||cat(p.cat).name)}</div>
-        <div class="d2">${money(p.amount)} в месяц · ${p.day} числа</div>
+        <div class="d2">${money(p.amount)} в месяц · ${p.day} числа${p.rate?` · ставка ${String(p.rate).replace('.',',')}%`:''}${p.open?` · с ${fmtDs(p.open)} ${p.open.slice(0,4)}`:''}${p.end?` · до ${fmtDs(p.end)} ${p.end.slice(0,4)}`:''}</div>
         ${li?(li.done?'<div class="ok" style="margin-top:4px">🎉 Полностью выплачен!</div>'
-          :`<div class="d2" style="color:var(--ink2);margin-top:4px">осталось <b>${money(li.left)}</b> · ${li.n} ${plural(li.n,['платёж','платежа','платежей'])} · до ${li.last?M_GEN[li.last.getMonth()]+' '+li.last.getFullYear():'—'}</div>
+          :`<div class="d2" style="color:var(--ink2);margin-top:4px">${li.est?'≈ ':''}осталось <b>${money(li.left)}</b>${li.est?' (по дате окончания)':''} · ${li.n} ${plural(li.n,['платёж','платежа','платежей'])} · до ${li.last?M_GEN[li.last.getMonth()]+' '+li.last.getFullYear():'—'}</div>
           ${li.paid>0?`<div class="mini-bar"><i style="width:${Math.min(100,li.share*100)}%"></i></div><div class="small muted" style="margin-top:2px">выплачено ${money(li.paid)} с момента ввода</div>`:''}`):''}
         <label class="loan-in">Осталось всего: <input class="inp num" data-bind="planned:${p.id}:total" inputmode="numeric" placeholder="напр. 120000" value="${p.total||''}"> ₽</label>
+        <button class="btn ghost small" data-pedit="${p.id}" style="padding:4px 0">✏️ ${p.rate||p.end?'изменить ставку и даты':'указать ставку и даты'}</button>
         </span></div>`).join('')
       :`<p class="sec small" style="margin:0 0 10px">Добавь кредиты, ипотеку и сплиты в настройках ⚙️ → «Обязательные платежи», а здесь укажи, сколько всего осталось выплатить — посчитаю, когда закроешь.</p>
         <button class="btn block" data-goto="settings">Перейти к платежам</button>`}
@@ -1330,20 +1407,36 @@ function saveAdviceHtml(){
   </div>`;
 }
 function planForm(fixedCats){
-  const p=ui.pEdit&&S.planned.find(x=>x.id===ui.pEdit);
+  const p=ui.pEdit&&S.planned.find(x=>x.id===ui.pEdit), f=p?freqOf(p):'month', sel=p?p.cat:'loans';
+  const opt=c=>`<option value="${esc(c.id)}"${c.id===sel?' selected':''}>${c.emoji} ${esc(c.name)}</option>`;
   return `<div class="addform${p?' editing':''}" id="planForm">
-    <input class="inp" id="pName" placeholder="Название: кредит, сплит, аренда…" value="${p?esc(p.name):''}" autocomplete="off">
-    <div class="r3"><input class="inp num" id="pAmount" inputmode="decimal" placeholder="Сумма в месяц, ₽" value="${p?p.amount:''}"><input class="inp num" id="pDay" inputmode="numeric" placeholder="Число" value="${p?p.day:''}"></div>
-    <select class="inp" id="pCat">${fixedCats.map(c=>`<option value="${esc(c.id)}"${c.id===(p?p.cat:'loans')?' selected':''}>${c.emoji} ${esc(c.name)}</option>`).join('')}</select>
+    <input class="inp" id="pName" placeholder="Название: кредит, сплит, ДР мамы…" value="${p?esc(p.name):''}" autocomplete="off">
+    <select class="inp" id="pFreq"><option value="month"${f==='month'?' selected':''}>🔁 Каждый месяц</option><option value="year"${f==='year'?' selected':''}>📅 Раз в год</option><option value="once"${f==='once'?' selected':''}>1️⃣ Один раз</option></select>
+    <div class="r3" id="pWhen"><input class="inp num" id="pAmount" inputmode="decimal" placeholder="Сумма, ₽" value="${p?p.amount:''}"><input class="inp num" id="pDay" inputmode="numeric" placeholder="Число" value="${p?.day||''}"><input class="inp" id="pDate" type="date" value="${p?.date||''}"></div>
+    <select class="inp" id="pCat"><optgroup label="Обязательные">${fixedCats.map(opt).join('')}</optgroup><optgroup label="Повседневные">${S.categories.filter(c=>c.kind!=='fixed').map(opt).join('')}</optgroup></select>
+    <div id="pLoan" style="display:grid;gap:8px">
+      <div class="flabel" style="margin:2px 2px -4px">Если знаешь — для точного расчёта кредита (необязательно):</div>
+      <input class="inp num" id="pRate" inputmode="decimal" placeholder="Ставка, % годовых" value="${p?.rate||''}">
+      <div class="row2 eq"><div><div class="flabel">Дата открытия</div><input class="inp" id="pOpen" type="date" value="${p?.open||''}"></div>
+        <div><div class="flabel">Дата окончания</div><input class="inp" id="pEnd" type="date" value="${p?.end||''}"></div></div>
+    </div>
     <div class="btns${p?' two':''}"><button class="btn primary" data-act="planSave">${p?'Сохранить':'+ Добавить платёж'}</button>${p?'<button class="btn" data-act="planCancel">Отмена</button>':''}</div>
   </div>`;
+}
+// показываем поля под выбранную периодичность и категорию
+function syncPlanForm(){
+  const f=$('#pFreq'); if(!f)return; const m=f.value==='month';
+  $('#pDay').hidden=!m; $('#pDate').hidden=m;
+  $('#pWhen').style.gridTemplateColumns=m?'1fr 80px':'1fr 1fr';
+  $('#pAmount').placeholder=m?'Сумма в месяц, ₽':'Сумма, ₽';
+  $('#pLoan').hidden=!(m&&DEBT_CATS.has($('#pCat').value));
 }
 function renderSettings(){
   ensureIncomeSlots(S);
   const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
   const custom=S.categories.filter(c=>!DEFAULT_CATS.some(d=>d.id===c.id));
   const fixedCats=S.categories.filter(c=>c.kind==='fixed');
-  const totalInc=monthlyIncome(), totalPl=sum(S.planned);
+  const totalInc=monthlyIncome(), totalPl=sum(activePlanned()), nOther=S.planned.filter(p=>freqOf(p)!=='month').length;
   const incRow=(i,idx)=>`<div class="srow">
       <input class="inp" data-bind="incomes:${i.id}:name" value="${esc(i.name)}" placeholder="${idx===0?'Аванс':'Зарплата'}">
       <input class="inp num" data-bind="incomes:${i.id}:amount" value="${i.amount||''}" inputmode="numeric" placeholder="сумма">
@@ -1357,17 +1450,18 @@ function renderSettings(){
       ${S.incomes.map(incRow).join('')}
       <button class="btn ghost" data-act="addinc">+ Ещё источник дохода</button>
       ${totalInc?`<div class="small sec">Итого в месяц: <b>${money(totalInc)}</b></div>`:''}
-      <label class="check" style="margin:12px 2px 0"><input type="checkbox" data-bind="carry"${S.carry!==false?' checked':''}><span>Переносить неистраченное на следующий период — остаток прибавится к деньгам после следующей выплаты</span></label>
+      ${mainAcc()?`<label class="check" style="margin:12px 2px 0"><input type="checkbox" data-bind="limitMode"${S.limitMode!=='salary'?' checked':''}><span>Считать дневной лимит от денег на счетах (точнее, если баланс актуальный). Выключи — буду считать от зарплаты.</span></label>`:''}
+      <label class="check" style="margin:12px 2px 0"${mainAcc()&&S.limitMode!=='salary'?' hidden':''}><input type="checkbox" data-bind="carry"${S.carry!==false?' checked':''}><span>Переносить неистраченное на следующий период — остаток прибавится к деньгам после следующей выплаты</span></label>
     </div>
     <div class="card"><h2>📌 Обязательные платежи</h2>
-      <div class="small sec" style="margin-bottom:10px">Кредиты, ипотека, сплиты, аренда, ЖКХ, связь — всё, что платишь каждый месяц. Эти деньги заранее вычитаются из дневного лимита. Остаток по кредитам — во вкладке «Счета».</div>
+      <div class="small sec" style="margin-bottom:10px">Кредиты, ипотека, сплиты, аренда, ЖКХ, связь — всё, что платишь каждый месяц. А ещё разовые и годовые: подарок на ДР, годовая подписка, страховка. Эти деньги заранее вычитаются из дневного лимита в том периоде, где выпадает дата. Остаток по кредитам — во вкладке «Счета».</div>
       ${planForm(fixedCats)}
-      ${S.planned.length?`<div class="plist">${[...S.planned].sort((a,b)=>a.day-b.day).map((p,i)=>`<div class="prow${i===0?' first':''}">
+      ${S.planned.length?`<div class="plist">${[...S.planned].sort((a,b)=>(freqOf(a)==='month'?0:1)-(freqOf(b)==='month'?0:1)||(a.day||0)-(b.day||0)||(a.date||'').localeCompare(b.date||'')).map((p,i)=>`<div class="prow${i===0?' first':''}">
         <span class="em">${cat(p.cat).emoji}</span>
-        <span class="tx"><div class="d1">${esc(p.name||cat(p.cat).name)}</div><div class="d2">${money(p.amount)} · ${p.day} числа · ${esc(cat(p.cat).name)}</div></span>
+        <span class="tx"><div class="d1">${esc(p.name||cat(p.cat).name)}</div><div class="d2">${money(p.amount)} · ${planWhen(p)} · ${esc(cat(p.cat).name)}${p.rate?` · ${String(p.rate).replace('.',',')}%`:''}${p.end?` · до ${fmtDs(p.end)} ${p.end.slice(0,4)}`:''}</div></span>
         <span class="acts"><button data-pedit="${p.id}" aria-label="Изменить">✏️</button><button data-pdel="${p.id}" aria-label="Удалить">🗑️</button></span>
       </div>`).join('')}</div>`:''}
-      ${totalPl?`<div class="small sec">Итого в месяц: <b>${money(totalPl)}</b>${totalInc?` — ${pct(totalPl,totalInc)}% дохода`:''}</div>`:''}
+      ${totalPl?`<div class="small sec">Итого в месяц: <b>${money(totalPl)}</b>${totalInc?` — ${pct(totalPl,totalInc)}% дохода`:''}${nOther?` · ещё ${nOther} ${plural(nOther,['разовый/годовой','разовых/годовых','разовых/годовых'])}`:''}</div>`:''}
     </div>
     <div class="card" id="saveCard"><h2>🐷 Накопления: откладывать в месяц</h2>
       ${goals().length>1?`<div class="sec" style="font-size:15px">Откладываешь всего <b>${money(S.saveMonthly||0)}</b> в месяц по ${goals().length} целям. Суммы по каждой цели — во вкладке «Счета».</div>
@@ -1712,7 +1806,7 @@ document.addEventListener('click',async ev=>{
   if(t.dataset.retall){const d=S.debts.find(x=>x.id===t.dataset.retall);debtReturn(d,debtLeft(d),t);keepScroll(render);return}
   if(t.dataset.newdebt){openDebt(null,t.dataset.newdebt);return}
   if(t.dataset.debt){openDebt(t.dataset.debt);return}
-  if(t.dataset.setsave!=null){const g=soleGoal(true);if(g){g.monthly=+t.dataset.setsave;syncSave()}save();haptic('success');keepScroll(renderSettings);
+  if(t.dataset.setsave!=null){const g=soleGoal(true);if(g){g.monthly=+t.dataset.setsave;syncSave()}save();haptic('success');keepScroll(()=>{renderSettings();syncPlanForm()});
     toast(S.saveMonthly?`🐷 Копилка: ${money(S.saveMonthly)} в месяц`:'Копилка выключена');return}
   if(t.dataset.fcat){
     // повторное нажатие на выбранную категорию отменяет ручной выбор
@@ -1745,12 +1839,12 @@ document.addEventListener('click',async ev=>{
       syncSave();save();closeSheet();render();haptic('warn');toast('Удалено')}return}
   if(t.id==='tSave'){saveTransfer();return}
   if(t.dataset.facc){ui.fAcc=t.dataset.facc;haptic();renderAccChips();return}
-  if(t.dataset.pedit){ui.pEdit=t.dataset.pedit;keepScroll(renderSettings);haptic();$('#planForm').scrollIntoView({block:'center',behavior:'smooth'});return}
+  if(t.dataset.pedit){ui.pEdit=t.dataset.pedit;if(ui.view!=='settings'){ui.view='settings';render()}else keepScroll(()=>{renderSettings();syncPlanForm()});haptic();$('#planForm').scrollIntoView({block:'center',behavior:'smooth'});return}
   if(t.dataset.pdel){const p=S.planned.find(x=>x.id===t.dataset.pdel);
     if(confirm(`Удалить платёж «${p.name||cat(p.cat).name}»? Уже внесённые оплаты останутся в истории.`)){
-      S.planned=S.planned.filter(x=>x.id!==p.id);if(ui.pEdit===p.id)ui.pEdit=null;save();haptic('warn');keepScroll(renderSettings);toast('Платёж удалён')}return}
-  if(t.dataset.kind){const c=S.categories.find(x=>x.id===t.dataset.kind);c.kind=c.kind==='fixed'?'var':'fixed';save();haptic();keepScroll(renderSettings);return}
-  if(t.dataset.del){const [arr,id]=t.dataset.del.split(':');S[arr]=S[arr].filter(x=>x.id!==id);save();haptic('warn');keepScroll(renderSettings);return}
+      S.planned=S.planned.filter(x=>x.id!==p.id);if(ui.pEdit===p.id)ui.pEdit=null;save();haptic('warn');keepScroll(()=>{renderSettings();syncPlanForm()});toast('Платёж удалён')}return}
+  if(t.dataset.kind){const c=S.categories.find(x=>x.id===t.dataset.kind);c.kind=c.kind==='fixed'?'var':'fixed';save();haptic();keepScroll(()=>{renderSettings();syncPlanForm()});return}
+  if(t.dataset.del){const [arr,id]=t.dataset.del.split(':');S[arr]=S[arr].filter(x=>x.id!==id);save();haptic('warn');keepScroll(()=>{renderSettings();syncPlanForm()});return}
   if(t.dataset.delcat){const id=t.dataset.delcat;if(!confirm('Удалить категорию? Её траты перейдут в «Другое».'))return;
     S.categories=S.categories.filter(c=>c.id!==id);S.expenses.forEach(e=>{if(e.cat===id)e.cat='other'});
     for(const k in S.learned)if(S.learned[k]===id)delete S.learned[k];save();keepScroll(render);return}
@@ -1762,16 +1856,20 @@ document.addEventListener('click',async ev=>{
     case 'snoozeSheet':S.backupSnooze=todayStr();save();closeSheet();if(ui.view==='home')keepScroll(renderHome);toast('Напомню завтра');break;
     case 'csv':exportCSV();break;
     case 'import':$('#importFile').click();break;
-    case 'addinc':S.incomes.push({id:uid(),name:'',amount:0,day:0});save();keepScroll(renderSettings);haptic();
+    case 'addinc':S.incomes.push({id:uid(),name:'',amount:0,day:0});save();keepScroll(()=>{renderSettings();syncPlanForm()});haptic();
       document.querySelectorAll('[data-bind^="incomes:"][data-bind$=":name"]').forEach((el,i,a)=>{if(i===a.length-1)el.focus()});break;
-    case 'planSave':{const name=$('#pName').value.trim(), amount=parseAmount($('#pAmount').value), day=parseInt($('#pDay').value,10), c=$('#pCat').value;
+    case 'planSave':{const name=$('#pName').value.trim(), amount=parseAmount($('#pAmount').value), day=parseInt($('#pDay').value,10), c=$('#pCat').value, freq=$('#pFreq').value, date=$('#pDate').value;
       if(!name){toast('Как назвать платёж?');haptic('warn');$('#pName').focus();return}
       if(!(amount>0)){toast('Введи сумму');haptic('warn');$('#pAmount').focus();return}
-      if(!(day>=1&&day<=31)){toast('Число месяца: от 1 до 31');haptic('warn');$('#pDay').focus();return}
-      if(ui.pEdit)Object.assign(S.planned.find(x=>x.id===ui.pEdit),{name,amount,day,cat:c});
-      else S.planned.push({id:uid(),name,amount,day,cat:c});
-      const was=ui.pEdit; ui.pEdit=null; save(); keepScroll(renderSettings); haptic('success'); toast(was?'Сохранено':`📌 ${name} добавлен`);break}
-    case 'planCancel':ui.pEdit=null;keepScroll(renderSettings);break;
+      if(freq==='month'&&!(day>=1&&day<=31)){toast('Число месяца: от 1 до 31');haptic('warn');$('#pDay').focus();return}
+      if(freq!=='month'&&!date){toast('Укажи дату платежа');haptic('warn');$('#pDate').focus();return}
+      const loan=freq==='month'&&DEBT_CATS.has(c), rate=parseAmount($('#pRate').value);
+      const row={name,amount,cat:c,freq,day:freq==='month'?day:0,date:freq==='month'?'':date,
+        rate:loan&&rate>0?rate:0,open:loan?$('#pOpen').value:'',end:loan?$('#pEnd').value:''};
+      if(ui.pEdit)Object.assign(S.planned.find(x=>x.id===ui.pEdit),row);
+      else S.planned.push({id:uid(),...row});
+      const was=ui.pEdit; ui.pEdit=null; save(); keepScroll(()=>{renderSettings();syncPlanForm()}); haptic('success'); toast(was?'Сохранено':`📌 ${name} добавлен`);break}
+    case 'planCancel':ui.pEdit=null;keepScroll(()=>{renderSettings();syncPlanForm()});break;
     case 'setname':{const n=$('#nameIn').value.trim();if(!n){$('#nameIn').focus();return}S.name=n;save();haptic('success');keepScroll(renderHome);toast(`Приятно познакомиться, ${n}! ☀️`);break}
     case 'skipname':S.name='';save();keepScroll(renderHome);break;
     case 'setbal':{const v=parseAmount($('#balIn').value);if(!(v>=0)){$('#balIn').focus();return}
@@ -1808,12 +1906,14 @@ document.addEventListener('input',ev=>{
   if(el.id==='fDesc'){ui.fGuess=guess(el.value);if(!ui.fManual)ui.fCat=ui.fGuess;renderChips();return}
   if(el.id==='search'){ui.search=el.value;renderHistory();return}
   if(['aBal','aTarget','aDeadline'].includes(el.id)){updateNeed();return}
-  if(el.id==='pName'&&!ui.pEdit){const g=guess(el.value);if(g&&isFixed(g))$('#pCat').value=g;return}
+  if(el.id==='pName'&&!ui.pEdit){const g=guess(el.value);if(g&&(isFixed(g)||$('#pFreq').value!=='month'))$('#pCat').value=g;syncPlanForm();return}
+  if(el.id==='pFreq'||el.id==='pCat'){syncPlanForm();return}
   const b=el.dataset?.bind; if(!b)return;
   if(b==='name'){S.name=el.value.trim()}
   else if(b==='piggyBalance'){const v=parseAmount(el.value),g=soleGoal(true);if(g){g.start=v>0?v:0;g.ts=Date.now()}}
   else if(b==='piggyDays'){const ds=[...new Set((el.value.match(/\d+/g)||[]).map(Number).filter(n=>n>=1&&n<=31))].sort((a,b)=>a-b);S.piggy={...(S.piggy||{}),days:ds}}
   else if(b==='carry'){S.carry=el.checked}
+  else if(b==='limitMode'){S.limitMode=el.checked?'balance':'salary';keepScroll(()=>{renderSettings();syncPlanForm()})}
   else if(b==='saveMonthly'){const v=parseAmount(el.value),g=soleGoal(v>0);if(g){g.monthly=v>0?v:0;syncSave()}}
   else if(b==='budget'){const v=parseAmount(el.value);S.budget=v>0?v:0}
   else{
@@ -1830,6 +1930,7 @@ document.addEventListener('input',ev=>{
   if(ui.view==='settings'){clearTimeout(adviceTimer);adviceTimer=setTimeout(()=>{const a=$('#saveAdvice');if(a)a.innerHTML=piggyLine()+saveAdviceHtml()},250)}
 });
 document.addEventListener('change',ev=>{
+  if(ev.target.id==='pFreq'||ev.target.id==='pCat')syncPlanForm();
   const b=ev.target.dataset?.bind||'';
   if(b.endsWith(':cat'))ev.target.dispatchEvent(new Event('input',{bubbles:true}));
   if(b.endsWith(':total')&&ui.view==='debts')keepScroll(renderDebts);

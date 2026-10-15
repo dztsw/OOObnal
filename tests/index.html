@@ -214,6 +214,47 @@ const tests=[
   $('[data-cview="bars"]').click(); eq($('#catsCard').querySelectorAll('.vbar').length,8,'столбцов должно быть 8');
   eq(ev('S.chartView'),'bars','вид не сохранился');
 }],
+['Лимит от баланса основного счёта: деньги на счетах − обязательные до зарплаты', async()=>{
+  const {ev,$,W}=await app(); baseState(ev,`S.accounts=[{id:'m',type:'main',name:'Карта',emoji:'💳',start:30000,ts:Date.now()-1000}];
+    S.planned=[{id:'p1',name:'Кредит',amount:5000,day:${shift(2).getDate()},cat:'loans'}]`);
+  let P=ev('period()'); eq(P.mode,'balance','режим'); eq(P.free,25000,'свободно = 30 000 − 5 000'); near(P.limit,25000/P.daysLeft,0.01,'лимит в день');
+  ev("openSheet()"); $('#fAmount').value='600'; $('#fDesc').value='Обед'; ev('saveForm()');
+  const P2=ev('period()'); near(P2.limit,P.limit,0.01,'лимит дня не должен меняться от сегодняшней траты'); near(P2.todayLeft,P.limit-600,0.01,'осталось сегодня');
+  ok(txt($('#v-home')).includes('считаю от денег на счетах'),'на главной не видно режима');
+  $('[data-pay]').click(); eq(ev('period().free'),P2.free,'оплата обязательного не должна менять свободные деньги');
+  ev("S.limitMode='salary'"); eq(ev('period().mode'),'salary','переключение на расчёт от зарплаты');
+}],
+['Разовый и годовой платёж: резерв в своём периоде, «скоро» — если позже', async()=>{
+  const {ev,$}=await app(); baseState(ev,`S.planned=[
+    {id:'o1',name:'ДР мамы',amount:7000,cat:'gifts',freq:'once',date:'${ymd(shift(2))}'},
+    {id:'o2',name:'Свадьба друга',amount:15000,cat:'gifts',freq:'once',date:'${ymd(shift(20))}'},
+    {id:'y1',name:'Годовая подписка',amount:3000,cat:'subs',freq:'year',date:'${ymd(new Date(shift(3).getFullYear()-1,shift(3).getMonth(),shift(3).getDate()))}'}]`);
+  const P=ev('period()'); eq(P.reserve,10000,'в резерве разовый (7 000) и годовой (3 000) этого периода');
+  ok(txt($('#v-home')).includes('ДР мамы'),'разовый не показан'); ok(txt($('#v-home')).includes('Свадьба друга'),'нет блока «скоро»');
+  ev("openSheet()"); $('#fAmount').value='7000'; $('#fDesc').value='подарок маме'; ev('saveForm()');
+  eq(ev('period().reserve'),3000,'трата «подарок» не привязалась к разовому платежу');
+}],
+['Кредит: остаток по дате окончания, ставка — в совете о досрочке', async()=>{
+  const {ev}=await app(); const d=shift(5).getDate(), D0=shift(0);
+  const end=ymd(new Date(D0.getFullYear(),D0.getMonth()+11,28));
+  baseState(ev,`S.planned=[{id:'l1',name:'Кредит Альфа',amount:10000,day:${d},cat:'loans',rate:24,end:'${end}'},{id:'l2',name:'Кредит ВТБ',amount:8000,day:${d},cat:'loans',rate:12,total:60000,totalTs:Date.now()}];
+    for(let i=0;i<20;i++)S.expenses.push({id:'v'+i,amount:300,desc:'кофе',cat:'cafe',date:'${ymd(shift(-1))}',ts:i})`);
+  const li=ev("loanInfo(S.planned[0])"); ok(li.est&&li.n>=10&&li.n<=13,'платежей по дате окончания: '+li.n); eq(li.left,li.n*10000,'остаток = платежи × сумма');
+  ev("go('tips')"); const t=txt(document.querySelector('iframe').contentWindow.document.querySelector('#v-tips'));
+  ok(t.includes('Кредит Альфа')&&t.includes('24%'),'совет о досрочке должен выбрать кредит с самой высокой ставкой');
+  ok(t.includes('на процентах сэкономишь'),'нет расчёта экономии на процентах');
+}],
+['Форма платежа: «один раз» с датой, кредит со ставкой и датами', async()=>{
+  const {ev,$,W}=await app(); baseState(ev); ev("go('settings')");
+  $('#pName').value='ДР Саши'; $('#pFreq').value='once'; $('#pFreq').dispatchEvent(new W.Event('change',{bubbles:true}));
+  ok($('#pDay').hidden&&!$('#pDate').hidden,'для разового должна быть дата, а не число');
+  $('#pAmount').value='5000'; $('#pDate').value=ymd(shift(10)); $('#pCat').value='gifts'; $('[data-act="planSave"]').click();
+  eq(ev("S.planned[0].freq"),'once','периодичность'); eq(ev("S.planned[0].date"),ymd(shift(10)),'дата');
+  $('#pName').value='Ипотека'; $('#pFreq').value='month'; $('#pCat').value='mortgage'; $('#pCat').dispatchEvent(new W.Event('change',{bubbles:true}));
+  ok(!$('#pLoan').hidden,'поля кредита не показаны');
+  $('#pAmount').value='30000'; $('#pDay').value='5'; $('#pRate').value='9,5'; $('#pEnd').value='2040-05-05'; $('[data-act="planSave"]').click();
+  eq(ev("S.planned[1].rate"),9.5,'ставка'); eq(ev("S.planned[1].end"),'2040-05-05','дата окончания');
+}],
 ['Подпись и версия внизу настроек', async()=>{
   const {ev,$}=await app(); ev("go('settings')");
   const t=txt($('#v-settings')); ok(t.includes('версия '+ev('APP_VERSION')),'нет версии'); ok(t.includes('dzts_w'),'нет подписи');
