@@ -32,12 +32,12 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const txt=el=>(el?.textContent||'').replace(/[  ]/g,' ');
 let frame=null;
 
-async function app(w=375,h=812){
+async function app(w=375,h=812,opts={}){
   if(frame){frame.remove();frame=null;await sleep(50)}
   localStorage.removeItem('rashody-state');
   await new Promise(r=>{const q=indexedDB.deleteDatabase('rashody');q.onsuccess=q.onerror=q.onblocked=()=>r()});
   frame=document.createElement('iframe');frame.style.width=w+'px';frame.style.height=h+'px';
-  frame.src='../rashody/index.html?test='+Date.now();box.appendChild(frame);
+  frame.src='../rashody/index.html?test='+Date.now()+(opts.query||'');box.appendChild(frame);
   for(let i=0;i<100;i++){await sleep(50);try{if(frame.contentWindow.document.querySelector('#v-home')?.innerHTML.length)break}catch(e){}}
   const W=frame.contentWindow, $=s=>W.document.querySelector(s);
   // Защита приложения запрещает eval, поэтому выполняем код как встроенный <script> внутри iframe.
@@ -49,7 +49,7 @@ async function app(w=375,h=812){
     W.document.body.appendChild(el);el.remove();
     if(W.__e)throw W.__e; return W.__r;
   };
-  ev('closeSheet()');
+  if(!opts.keep){ev("if(!document.getElementById('wiz').hidden)closeWizard();closeSheet();S.name=S.name??'Тест';S.seenVersion=APP_VERSION;0");await sleep(600);ev('closeSheet()')}
   return {W,ev,$,doc:W.document};
 }
 // Две выплаты: одна была 3 дня назад, следующая через 5 дней
@@ -166,7 +166,7 @@ const tests=[
   a=await app(360,740); eq(a.W.getComputedStyle(a.$('.rotate')).display,'none','заглушка в вертикали');
 }],
 ['Первый вход: спрашиваем баланс, дальше он меняется от трат и доходов', async()=>{
-  const {ev,$,W}=await app(); baseState(ev);
+  const {ev,$,W}=await app(); baseState(ev,`S.balAsked=false`); // у тех, кто пришёл до мастера
   ok($('#balIn'),'нет вопроса про баланс на главной');
   $('#balIn').value='25000'; $('[data-act="setbal"]').click();
   eq(ev('S.accounts.length'),1,'счёт не создан'); eq(ev('totalBalance()'),25000,'баланс');
@@ -258,6 +258,51 @@ const tests=[
 ['Сюрприз: чужое имя ничего не открывает', async()=>{
   const {ev,$}=await app(); ev("S.name='Вова'"); await ev('loveCheck()'); await sleep(1500);
   ok(!ev('ui.love'),'расшифровалось чужим именем'); ok(!$('.love'),'показался сюрприз');
+}],
+['Мастер первого запуска: имя, баланс, зарплата, платёж → лимит', async()=>{
+  const {ev,$}=await app(375,812,{keep:true});
+  ok(!$('#wiz').hidden,'мастер не открылся при первом входе');
+  $('#wName').value='Тест'; $('#wBal').value='30000'; $('[data-act="wizNext"]').click();
+  $('#wA1').value='40000'; $('#wD1').value=String(shift(-3).getDate()); $('#wA2').value='60000'; $('#wD2').value=String(shift(5).getDate()); $('[data-act="wizNext"]').click();
+  $('[data-wsugg="rent"]').click(); $('#wpAmount').value='20000'; $('#wpDay').value='1'; $('[data-act="wizAddPlan"]').click();
+  eq(ev('S.planned.length'),1,'платёж не добавился'); eq(ev('S.planned[0].cat'),'rent','категория из подсказки');
+  $('[data-act="wizNext"]').click(); ok(txt($('#wizBody')).includes('Сегодня можно потратить'),'на последнем шаге нет лимита');
+  $('[data-act="wizNext"]').click(); ok($('#wiz').hidden,'мастер не закрылся');
+  eq(ev('S.name'),'Тест','имя'); eq(ev('totalBalance()'),30000,'баланс'); eq(ev('monthlyIncome()'),100000,'зарплата'); eq(ev('S.onboarded'),true,'отметка');
+}],
+['Вход по коду: неверный код не пускает, верный — открывает', async()=>{
+  const {ev,$,doc}=await app(); baseState(ev);
+  await ev('setPin("1234")'); await sleep(200); ev('lockNow()');
+  ok(doc.body.classList.contains('locked'),'не заблокировалось'); ok(!$('#lock').hidden,'нет экрана кода');
+  for(const k of '1111')$(`[data-pin="${k}"]`).click(); await sleep(300);
+  ok(doc.body.classList.contains('locked'),'пустило с неверным кодом');
+  for(const k of '1234')$(`[data-pin="${k}"]`).click(); await sleep(300);
+  ok(!doc.body.classList.contains('locked')&&$('#lock').hidden,'не пустило с верным кодом');
+}],
+['«Что нового»: показывается один раз после обновления', async()=>{
+  const {ev,$}=await app(); ev("S.seenVersion='1.6.1'");
+  eq(ev('checkChangelog()'),true,'окно не показано'); ok(txt($('#wnList')).includes('Мастер первого запуска'),'нет пунктов новой версии');
+  ev('closeSheet()'); eq(ev('checkChangelog()'),false,'показалось второй раз');
+}],
+['Настройки разделами: закрыты, есть подсказка, раздел раскрывается', async()=>{
+  const {ev,$}=await app(); baseState(ev); ev("go('settings')");
+  const secs=[...$('#v-settings').querySelectorAll('details.sect')]; ok(secs.length>=6,'мало разделов');
+  ok(secs.every(d=>!d.open),'разделы должны быть свёрнуты'); ok($('.sec-hint'),'нет подсказки');
+  ok(getComputedStyle(secs[0].querySelector('summary .chev'),'::before').content.includes('открыть'),'нет «открыть» в заголовке');
+  secs[1].open=true; await sleep(100); eq(ev('S.secHintSeen'),true,'подсказка не запомнилась');
+  ev('keepScroll(()=>{renderSettings();syncPlanForm()})'); ok($('details[data-sec="income"]').open,'раскрытый раздел закрылся после перерисовки');
+}],
+['Лимиты по категориям: полоска, перерасход, совет', async()=>{
+  const {ev,$}=await app(); baseState(ev); ev("go('settings')");
+  $('#lCat').value='cafe'; $('#lAmt').value='1000'; $('[data-act="limAdd"]').click(); eq(ev('S.catLimits.cafe'),1000,'лимит не сохранился');
+  ev("go('home')"); ev("openSheet()"); $('#fAmount').value='1200'; $('#fDesc').value='кофе'; ev('saveForm()');
+  ok($('#catsCard .crow .bar i.bad'),'полоска не покраснела'); ok(txt($('#catsCard')).includes('/ 1 000'),'не видно лимита');
+  ok(txt($('#toast')).includes('из 1 000'),'в подсказке после траты нет остатка лимита');
+  ev("go('tips')"); ok(txt($('#v-tips')).includes('превышен'),'нет совета о перерасходе');
+}],
+['Быстрый старт: ссылка ?add открывает новую трату с суммой и описанием', async()=>{
+  const {ev,$}=await app(375,812,{query:'&add&a=250&d=кофе'}); baseState(ev); ev('quickOpen()'); await sleep(300);
+  ok($('#sheet').classList.contains('on'),'окно траты не открылось'); eq($('#fAmount').value,'250','сумма'); eq(ev('ui.fCat'),'cafe','описание и категория');
 }],
 ['Подпись и версия внизу настроек', async()=>{
   const {ev,$}=await app(); ev("go('settings')");

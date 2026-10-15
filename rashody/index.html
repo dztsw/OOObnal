@@ -380,6 +380,45 @@ button.card{display:block;width:100%;text-align:left;font:inherit;color:inherit}
 .love .txt{position:relative;z-index:2}
 @keyframes lovein{from{opacity:0}} @keyframes loveout{to{opacity:0}}
 @keyframes lovepop{from{opacity:0;transform:scale(.5)}}
+/* разделы настроек */
+details.sect>summary{flex-wrap:wrap}
+details.sect>summary .st{display:flex;flex-direction:column;gap:2px;min-width:0}
+details.sect>summary .sub{font-size:13px;font-weight:500;color:var(--muted)}
+details.sect>summary .chev{font-size:12px;color:var(--accent-strong);font-weight:650;white-space:nowrap}
+details.sect:not([open])>summary .chev::before{content:"открыть "}
+details.sect[open]>summary .chev::before{content:"свернуть "}
+.sec-hint{display:flex;align-items:center;gap:8px;justify-content:center;font-size:14px;color:var(--ink2);margin:0 0 12px;animation:bob 2.4s ease-in-out infinite}
+.lockbox{display:grid;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+/* экран блокировки */
+.lock{position:fixed;inset:0;z-index:90;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  padding:calc(env(safe-area-inset-top) + 20px) 24px calc(env(safe-area-inset-bottom) + 20px);background:var(--bg);text-align:center}
+.lock .lt{font-size:22px;font-weight:750}.lock .ls{font-size:14px;color:var(--ink2);min-height:20px}
+.dots{display:flex;gap:16px;margin:6px 0 10px}
+.dots i{width:16px;height:16px;border-radius:50%;border:2px solid var(--accent);transition:background .15s,transform .15s}
+.dots i.on{background:var(--accent);transform:scale(1.1)}
+.dots.shake{animation:shake .4s}
+@keyframes shake{20%,60%{transform:translateX(-10px)}40%,80%{transform:translateX(10px)}}
+.pad{display:grid;grid-template-columns:repeat(3,76px);gap:14px}
+.pad button{width:76px;height:76px;border-radius:50%;font-size:28px;font-weight:600;background:var(--card-solid);border:1px solid var(--ring);transition:transform .1s,background .1s}
+.pad button:active{transform:scale(.9);background:var(--accent-soft)}
+.pad button.txt{font-size:15px;background:transparent;border:0}
+body.locked header,body.locked main,body.locked nav.tabs{visibility:hidden}
+/* мастер первого запуска */
+.wiz{position:fixed;inset:0;z-index:80;background:var(--bg);overflow:auto;padding:calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 18px)}
+.wiz .in{max-width:520px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+.wiz .wdots{display:flex;gap:6px;justify-content:center;margin-bottom:18px}
+.wiz .wdots i{width:28px;height:5px;border-radius:3px;background:var(--line);transition:background .3s}
+.wiz .wdots i.on{background:var(--accent)}
+.wiz h2{font-size:26px;margin:4px 0 6px;letter-spacing:-.01em}
+.wiz .big{font-size:52px;line-height:1;animation:bob 3s ease-in-out infinite}
+.wiz .step{animation:up .45s cubic-bezier(.2,.8,.2,1) both;flex:1}
+.wiz .foot{display:grid;grid-template-columns:auto 1fr;gap:10px;margin-top:20px;position:sticky;bottom:0;padding-top:10px;background:linear-gradient(transparent,var(--bg) 30%)}
+.wiz .fl{margin:14px 2px 6px;font-size:14px;color:var(--ink2);font-weight:600}
+.wiz .sugg{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.wiz .hero-res{margin:18px 0;padding:18px;border-radius:22px;background:var(--hero);color:#fff;box-shadow:0 14px 34px rgba(255,110,60,.35)}
+.wiz .hero-res .n{font-size:40px;font-weight:800;letter-spacing:-.02em}
+.crow .bar>i.warn{background:var(--warn)} .crow .bar>i.bad{background:var(--bad)}
+.crow .lim{font-size:12px;color:var(--muted);font-weight:500}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
@@ -510,6 +549,25 @@ button.card{display:block;width:100%;text-align:left;font:inherit;color:inherit}
   <div class="hint" style="margin:0 0 12px">Перевод не считается тратой — деньги просто переходят между твоими счетами.</div>
   <div class="btns"><button class="btn primary block" id="tSave">Перевести</button></div>
 </div>
+<!-- шторка: что нового -->
+<div class="sheet" id="wsheet" role="dialog" aria-modal="true">
+  <div class="grab"></div>
+  <div style="text-align:center;padding:4px 4px 6px"><div style="font-size:44px">✨</div><h3 style="margin:4px 0 2px;font-size:21px">Что нового</h3>
+    <div class="small muted" id="wnVer"></div></div>
+  <div id="wnList"></div>
+  <div class="btns" style="margin-top:14px"><button class="btn primary block" data-act="wnOk">Класс!</button></div>
+</div>
+<!-- экран блокировки -->
+<div class="lock" id="lock" hidden>
+  <div style="font-size:40px">🔒</div>
+  <div class="lt" id="lockT">Введи код</div>
+  <div class="ls" id="lockS"></div>
+  <div class="dots" id="lockDots"><i></i><i></i><i></i><i></i></div>
+  <div class="pad" id="lockPad"></div>
+  <div style="display:flex;gap:18px;margin-top:6px"><button class="btn ghost small" id="lockFace" hidden>🙂 Войти по Face ID</button><button class="btn ghost small" id="lockAlt"></button></div>
+</div>
+<!-- мастер первого запуска -->
+<div class="wiz" id="wiz" hidden><div class="in"><div class="wdots" id="wizDots"></div><div id="wizBody" style="flex:1;display:flex;flex-direction:column"></div></div></div>
 <div class="toast" id="toast"></div>
 <input type="file" id="importFile" accept=".json,application/json" hidden>
 <label class="haptic" id="hapticL" aria-hidden="true"><input type="checkbox" switch tabindex="-1"></label>
@@ -525,7 +583,7 @@ const M_DAT=['январю','февралю','марту','апрелю','маю
 const WD=['вс','пн','вт','ср','чт','пт','сб'];
 const DAY=864e5;
 const DEBT_CATS=new Set(['loans','mortgage','installments']);
-const APP_VERSION='1.6.1';
+const APP_VERSION='1.7.0';
 const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------- утилиты ---------- */
@@ -565,6 +623,81 @@ function parseAmount(s){
 }
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('on'),2400)}
 
+/* ---------- вход по коду и Face ID ---------- */
+// Код хранится как хеш с солью. Это защита от чужих глаз, а не шифрование данных:
+// данные по-прежнему лежат в памяти телефона в открытом виде.
+const b64=u=>btoa(String.fromCharCode(...new Uint8Array(u)));
+async function hashPin(pin,salt){
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(salt+':'+pin));
+  return b64(buf);
+}
+async function setPin(pin){const salt=b64(crypto.getRandomValues(new Uint8Array(16)));S.lock={...(S.lock||{}),salt,pin:await hashPin(pin,salt)};save()}
+const checkPin=async pin=>!!S.lock?.pin&&await hashPin(pin,S.lock.salt)===S.lock.pin;
+let pinCtx=null;
+function renderPad(){
+  $('#lockPad').innerHTML=[1,2,3,4,5,6,7,8,9].map(n=>`<button data-pin="${n}">${n}</button>`).join('')+
+    `<span></span><button data-pin="0">0</button><button class="txt" data-pin="del" aria-label="Стереть">⌫</button>`;
+}
+function showPin(ctx){
+  pinCtx=ctx; ui.pinBuf=''; renderPad();
+  $('#lockT').textContent=ctx.title; $('#lockS').textContent=ctx.sub||'';
+  $('#lockFace').hidden=!ctx.face; $('#lockAlt').textContent=ctx.alt||''; $('#lockAlt').hidden=!ctx.alt;
+  paintDots(); $('#lock').hidden=false;
+}
+function paintDots(){[...$('#lockDots').children].forEach((d,i)=>d.classList.toggle('on',i<ui.pinBuf.length))}
+async function pinKey(k){
+  if(!pinCtx)return; haptic();
+  if(k==='del'){ui.pinBuf=ui.pinBuf.slice(0,-1);paintDots();return}
+  if(ui.pinBuf.length>=4)return;
+  ui.pinBuf+=k; paintDots();
+  if(ui.pinBuf.length<4)return;
+  const ctx=pinCtx, ok=await ctx.onEnter(ui.pinBuf);
+  if(ok===false){const d=$('#lockDots');d.classList.remove('shake');void d.offsetWidth;d.classList.add('shake');haptic('warn');
+    $('#lockS').textContent=ctx.err||'Неверный код';ui.pinBuf='';setTimeout(paintDots,250)}
+  else if(ok===null){ui.pinBuf='';paintDots()}
+  else if(pinCtx===ctx)hidePin();
+}
+function hidePin(){pinCtx=null;$('#lock').hidden=true}
+let afterUnlock=null;
+function lockNow(){
+  if(!S.lock?.pin)return;
+  document.body.classList.add('locked'); closeSheet();
+  showPin({title:S.name?`Привет, ${S.name}!`:'Введи код',sub:'Введи код, чтобы открыть «Расходы»',face:!!S.lock.cred,alt:'Забыл код?',
+    onEnter:async pin=>{if(!(await checkPin(pin)))return false;unlock()}});
+  if(S.lock.cred)setTimeout(faceUnlock,350);
+}
+function unlock(){document.body.classList.remove('locked');hidePin();haptic('success');const f=afterUnlock;afterUnlock=null;if(f)f()}
+async function faceAvailable(){try{return !!(window.PublicKeyCredential&&await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable())}catch(e){return false}}
+async function enableFace(){
+  try{
+    const cred=await navigator.credentials.create({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),rp:{name:'Расходы'},
+      user:{id:crypto.getRandomValues(new Uint8Array(16)),name:'rashody',displayName:S.name||'Расходы'},
+      pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+      authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',residentKey:'discouraged'},timeout:60000}});
+    S.lock.cred=b64(cred.rawId); save(); haptic('success'); toast('🙂 Face ID включён'); return true;
+  }catch(e){toast('Face ID не включился — можно входить по коду');return false}
+}
+async function faceUnlock(){
+  if(!S.lock?.cred||!document.body.classList.contains('locked'))return;
+  try{
+    await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),
+      allowCredentials:[{type:'public-key',id:unb64(S.lock.cred),transports:['internal']}],userVerification:'required',timeout:60000}});
+    unlock();
+  }catch(e){} // отменили или не вышло — остаётся вход по коду
+}
+// установка / смена / выключение кода через тот же экран
+function pinSetupFlow(){
+  let first='';
+  showPin({title:'Придумай код',sub:'4 цифры — будешь вводить при входе',alt:'Отмена',
+    onEnter:async pin=>{
+      if(!first){first=pin;ui.pinBuf='';paintDots();$('#lockT').textContent='Повтори код';$('#lockS').textContent='';return null}
+      if(pin!==first){first='';$('#lockT').textContent='Придумай код';pinCtx.err='Коды не совпали — попробуй ещё раз';return false}
+      await setPin(pin);toast('🔒 Код установлен');keepScroll(()=>{renderSettings();syncPlanForm()});return true}});
+  // onEnter вернул null на первом вводе — оставляем экран открытым
+}
+function pinVerifyThen(fn){
+  showPin({title:'Введи текущий код',alt:'Отмена',onEnter:async pin=>{if(!(await checkPin(pin)))return false;setTimeout(fn,50);return true}});
+}
 /* ---------- тактильный отклик и эффекты ---------- */
 // Android — вибрация; iPhone (iOS 18+) — скрытый переключатель «switch» даёт системный тик.
 function haptic(kind='light'){
@@ -580,19 +713,19 @@ function haptic(kind='light'){
 // нет ни имени, ни текста: расшифровать сможет только приложение с нужным именем в настройках.
 const LOVE={"salt": "is7xjEIxBD6mAEWOuKptfA==", "iv": "4ZaIBr/LdvYO3990", "ct": "0/xvVekgu+4cwdxiXsg7b4+PsfdkVNHEAghM4pOSL+3+PwLXH+W/WOqD"};
 const unb64=t=>Uint8Array.from(atob(t),c=>c.charCodeAt(0));
-async function loveCheck(){
-  ui.love=null;
-  if(!S.name||!window.crypto?.subtle)return;
+async function loveCheck(done){
+  ui.love=null; const fin=()=>{if(typeof done==='function')done()};
+  if(!S.name||!window.crypto?.subtle)return fin();
   try{
     const enc=new TextEncoder();
     const base=await crypto.subtle.importKey('raw',enc.encode(norm(S.name)),'PBKDF2',false,['deriveKey']);
     const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:unb64(LOVE.salt),iterations:150000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['decrypt']);
     ui.love=new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(LOVE.iv)},key,unb64(LOVE.ct)));
-  }catch(e){return} // другое имя — просто не расшифровалось
+  }catch(e){return fin()} // другое имя — просто не расшифровалось
   if(ui.view==='home')keepScroll(renderHome);
-  if(S.loveDay!==todayStr()){S.loveDay=todayStr();save();showLove(ui.love)} // раз в сутки
+  if(S.loveDay!==todayStr()){S.loveDay=todayStr();save();showLove(ui.love,fin)} else fin(); // раз в сутки
 }
-function showLove(text){
+function showLove(text,done){
   closeSheet();
   const o=document.createElement('div');o.className='love';o.setAttribute('role','dialog');
   o.innerHTML=`<div class="txt">${esc(text)}<span class="sub">💛 нажми, чтобы закрыть</span></div>`;
@@ -604,7 +737,7 @@ function showLove(text){
       h.animate([{transform:'translate(0,0) rotate(0)',opacity:0},{opacity:1,offset:.1},
         {transform:`translate(${(Math.random()-.5)*120}px,${-innerHeight-80}px) rotate(${(Math.random()-.5)*60}deg)`,opacity:.9}],
         {duration:2600+Math.random()*2200,delay:Math.random()*1400,easing:'cubic-bezier(.3,.6,.5,1)',fill:'both'}).onfinish=()=>h.remove()}}
-  const close=()=>{if(o.classList.contains('out'))return;o.classList.add('out');setTimeout(()=>o.remove(),600)};
+  const close=()=>{if(o.classList.contains('out'))return;o.classList.add('out');setTimeout(()=>{o.remove();if(typeof done==='function')done()},600)};
   o.addEventListener('click',close); setTimeout(close,6000);
 }
 function confetti(x,y){
@@ -1026,6 +1159,13 @@ function insights(k){
     const prevVar=sum(prevCmp.filter(e=>!isFixed(e.cat)));
     if(prevVar>0&&varTotal/prevVar-1<=-.1)out.push({t:'good',i:'👍',x:`На повседневное тратишь на <b>${Math.round((1-varTotal/prevVar)*100)}% меньше</b>, чем${per} в ${M_PREP[mIdx(prevK)]}. Так держать!`});
   }
+  // лимиты по категориям
+  for(const [c,L] of Object.entries(S.catLimits||{})){if(!catExists(c)||!(L>0))continue;
+    const sp=sum(exps.filter(e=>e.cat===c)), r=sp/L;
+    if(r>=1)out.push({t:'bad',i:'🚦',x:`Лимит на ${cat(c).emoji} <b>${esc(cat(c).name)}</b> превышен: ${money(sp)} из ${money(L)}.`});
+    else if(r>=.8)out.push({t:'warn',i:'🚦',x:`${cat(c).emoji} <b>${esc(cat(c).name)}</b>: потрачено ${pct(sp,L)}% лимита, осталось ${money(L-sp)}${cur?` на ${days(N-d+1)}`:''}.`});
+    else if(cur&&d>=5&&sp/d*N>L*1.1)out.push({t:'info',i:'🚦',x:`${cat(c).emoji} ${esc(cat(c).name)}: при таком темпе к концу месяца выйдет ~${money(sp/d*N)} при лимите ${money(L)}.`});
+  }
   // одна и та же покупка много раз
   const byDesc={};for(const e of varExps){const n=norm(e.desc);if(!n)continue;const r=byDesc[n]||(byDesc[n]={n:e.desc,c:0,s:0});r.c++;r.s+=e.amount}
   const rep=Object.values(byDesc).filter(x=>x.c>=4).sort((a,b)=>b.s-a.s)[0];
@@ -1242,9 +1382,11 @@ function debtsMiniCard(){
     <span class="am num">${money(debtLeft(d))}</span></button>`}).join('')}</div>`;
 }
 function catRows(entries,total,max){
-  return entries.map(([c,v])=>`<button class="crow" data-cat="${esc(c)}"><span class="em">${cat(c).emoji}</span>
-    <span class="nm">${esc(cat(c).name)}</span><span class="am num">${money(v)}</span>
-    <span class="bar"><i style="width:${Math.max(2,v/max*100)}%"></i></span><span class="pc num">${pct(v,total)}%</span></button>`).join('');
+  // если на категорию есть лимит — полоска показывает долю лимита и краснеет при перерасходе
+  return entries.map(([c,v])=>{const L=+(S.catLimits?.[c])||0, r=L?v/L:0, cls=L?(r>=1?'bad':r>=.8?'warn':''):'';
+    return `<button class="crow" data-cat="${esc(c)}"><span class="em">${cat(c).emoji}</span>
+    <span class="nm">${esc(cat(c).name)}</span><span class="am num">${money(v)}${L?`<span class="lim"> / ${money(L)}</span>`:''}</span>
+    <span class="bar"><i class="${cls}" style="width:${Math.max(2,Math.min(100,L?r*100:v/max*100))}%"></i></span><span class="pc num">${L?pct(v,L)+'%':pct(v,total)+'%'}</span></button>`}).join('');
 }
 function renderHome(){
   const k=ui.month, exps=inMonth(k).filter(e=>!e.debtId), total=sum(exps), cur=isCurMonth(k), N=daysIn(k);
@@ -1474,29 +1616,56 @@ function syncPlanForm(){
   $('#pAmount').placeholder=m?'Сумма в месяц, ₽':'Сумма, ₽';
   $('#pLoan').hidden=!(m&&DEBT_CATS.has($('#pCat').value));
 }
+const catSpentNow=c=>sum(inMonth(mkey(new Date())).filter(e=>e.cat===c&&!e.debtId));
+function limitsHtml(){
+  const L=S.catLimits||{}, keys=Object.keys(L).filter(k=>catExists(k));
+  return `<div class="small sec" style="margin-bottom:10px">Сколько готов тратить в месяц на категорию. На главной полоска покажет, сколько осталось, а при 80% и перерасходе я предупрежу.</div>
+    <div class="addform"><select class="inp" id="lCat">${S.categories.filter(c=>c.kind!=='fixed').map(c=>`<option value="${esc(c.id)}">${c.emoji} ${esc(c.name)}</option>`).join('')}</select>
+      <div class="row2"><input class="inp num" id="lAmt" inputmode="decimal" placeholder="Лимит в месяц, ₽"><button class="btn primary" data-act="limAdd">Сохранить</button></div></div>
+    ${keys.length?`<div class="plist">${keys.map((k,i)=>{const sp=catSpentNow(k),r=sp/L[k];
+      return `<div class="prow${i===0?' first':''}"><span class="em">${cat(k).emoji}</span><span class="tx"><div class="d1">${esc(cat(k).name)}</div>
+        <div class="d2${r>=1?' late':''}">${money(sp)} из ${money(L[k])} в этом месяце${r>=1?' — перерасход':''}</div>
+        <div class="mini-bar"><i style="width:${Math.min(100,r*100)}%;background:${r>=1?'var(--bad)':r>=.8?'var(--warn)':''}"></i></div></span>
+        <span class="acts"><button data-limdel="${esc(k)}" aria-label="Убрать лимит">🗑️</button></span></div>`}).join('')}</div>`:''}`;
+}
 function renderSettings(){
   ensureIncomeSlots(S);
   const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
   const custom=S.categories.filter(c=>!DEFAULT_CATS.some(d=>d.id===c.id));
   const fixedCats=S.categories.filter(c=>c.kind==='fixed');
   const totalInc=monthlyIncome(), totalPl=sum(activePlanned()), nOther=S.planned.filter(p=>freqOf(p)!=='month').length;
+  ui.secOpen||=new Set();
+  // раздел: заголовок + краткая сводка, по нажатию раскрывается
+  const sec=(key,title,sub,body,extra='')=>`<details class="card sect" data-sec="${key}"${extra}${ui.secOpen.has(key)?' open':''}><summary><span class="st"><span>${title}</span><span class="sub">${sub}</span></span><span class="chev">▾</span></summary>${body}</details>`;
   const incRow=(i,idx)=>`<div class="srow">
       <input class="inp" data-bind="incomes:${i.id}:name" value="${esc(i.name)}" placeholder="${idx===0?'Аванс':'Зарплата'}">
       <input class="inp num" data-bind="incomes:${i.id}:amount" value="${i.amount||''}" inputmode="numeric" placeholder="сумма">
       <input class="inp num" data-bind="incomes:${i.id}:day" value="${i.day||''}" inputmode="numeric" placeholder="${idx===0?25:10}">
       ${idx>=2?`<button class="x" data-del="incomes:${i.id}" aria-label="Удалить">✕</button>`:'<span></span>'}</div>`;
+  const lockOn=!!S.lock?.pin;
   $('#v-settings').innerHTML=`
-    <div class="card"><h2>🙂 Как тебя зовут</h2><input class="inp" data-bind="name" placeholder="Имя" value="${esc(S.name||'')}" autocomplete="given-name"></div>
-    <div class="card"><h2>💼 Зарплата: две выплаты в месяц</h2>
+    ${S.secHintSeen?'':'<div class="sec-hint">👇 Нажми на раздел, чтобы открыть его</div>'}
+    ${sec('profile','🙂 Профиль и вход',`${S.name?esc(S.name)+' · ':''}${lockOn?(S.lock.cred?'код и Face ID':'вход по коду'):'без кода'}`,`
+      <div class="flabel">Как тебя зовут</div><input class="inp" data-bind="name" placeholder="Имя" value="${esc(S.name||'')}" autocomplete="given-name">
+      <div class="lockbox">
+        <div><b>🔒 Вход по коду</b> <span class="small muted">${lockOn?'включён':'выключен'}</span></div>
+        <div class="small sec">Приложение будет открываться только после ввода кода${ui.faceAvail?' или по Face ID':''}. Код защищает от чужих глаз; данные по-прежнему хранятся только в телефоне.</div>
+        ${lockOn?`<div class="btns two"><button class="btn" data-act="pinChange">Сменить код</button><button class="btn danger" data-act="pinOff">Выключить</button></div>
+          ${ui.faceAvail?(S.lock.cred?'<button class="btn block" data-act="faceOff">🙂 Face ID включён · выключить</button>':'<button class="btn primary block" data-act="faceOn">🙂 Включить Face ID</button>'):''}`
+        :'<button class="btn primary block" data-act="pinSet">Поставить код</button>'}
+      </div>
+      <div class="lockbox">
+        <label class="check" style="margin:0"><input type="checkbox" data-bind="quickAdd"${S.quickAdd?' checked':''}><span><b>⚡ Открывать сразу на новой трате</b><br>Нажал на иконку — и сразу вводишь сумму. Поставь иконку в Dock, и трата будет добавляться в одно касание.</span></label>
+      </div>`)}
+    ${sec('income','💼 Зарплата и доходы',totalInc?`${money(totalInc)} в месяц`:'не указана — нажми, чтобы указать',`
       <div class="small sec" style="margin-bottom:10px">Сумма «на руки» и число месяца. Если зарплата приходит один раз — оставь вторую строку пустой.</div>
       <div class="shead"><span>Название</span><span>Сумма</span><span>Число</span><span></span></div>
       ${S.incomes.map(incRow).join('')}
       <button class="btn ghost" data-act="addinc">+ Ещё источник дохода</button>
       ${totalInc?`<div class="small sec">Итого в месяц: <b>${money(totalInc)}</b></div>`:''}
       ${mainAcc()?`<label class="check" style="margin:12px 2px 0"><input type="checkbox" data-bind="limitMode"${S.limitMode!=='salary'?' checked':''}><span>Считать дневной лимит от денег на счетах (точнее, если баланс актуальный). Выключи — буду считать от зарплаты.</span></label>`:''}
-      <label class="check" style="margin:12px 2px 0"${mainAcc()&&S.limitMode!=='salary'?' hidden':''}><input type="checkbox" data-bind="carry"${S.carry!==false?' checked':''}><span>Переносить неистраченное на следующий период — остаток прибавится к деньгам после следующей выплаты</span></label>
-    </div>
-    <div class="card"><h2>📌 Обязательные платежи</h2>
+      <label class="check" style="margin:12px 2px 0"${mainAcc()&&S.limitMode!=='salary'?' hidden':''}><input type="checkbox" data-bind="carry"${S.carry!==false?' checked':''}><span>Переносить неистраченное на следующий период — остаток прибавится к деньгам после следующей выплаты</span></label>`)}
+    ${sec('planned','📌 Обязательные платежи',S.planned.length?`${S.planned.length} · ${money(totalPl)} в месяц`:'кредиты, аренда, ЖКХ, разовые',`
       <div class="small sec" style="margin-bottom:10px">Кредиты, ипотека, сплиты, аренда, ЖКХ, связь — всё, что платишь каждый месяц. А ещё разовые и годовые: подарок на ДР, годовая подписка, страховка. Эти деньги заранее вычитаются из дневного лимита в том периоде, где выпадает дата. Остаток по кредитам — во вкладке «Счета».</div>
       ${planForm(fixedCats)}
       ${S.planned.length?`<div class="plist">${[...S.planned].sort((a,b)=>(freqOf(a)==='month'?0:1)-(freqOf(b)==='month'?0:1)||(a.day||0)-(b.day||0)||(a.date||'').localeCompare(b.date||'')).map((p,i)=>`<div class="prow${i===0?' first':''}">
@@ -1504,9 +1673,9 @@ function renderSettings(){
         <span class="tx"><div class="d1">${esc(p.name||cat(p.cat).name)}</div><div class="d2">${money(p.amount)} · ${planWhen(p)} · ${esc(cat(p.cat).name)}${p.rate?` · ${String(p.rate).replace('.',',')}%`:''}${p.end?` · до ${fmtDs(p.end)} ${p.end.slice(0,4)}`:''}</div></span>
         <span class="acts"><button data-pedit="${p.id}" aria-label="Изменить">✏️</button><button data-pdel="${p.id}" aria-label="Удалить">🗑️</button></span>
       </div>`).join('')}</div>`:''}
-      ${totalPl?`<div class="small sec">Итого в месяц: <b>${money(totalPl)}</b>${totalInc?` — ${pct(totalPl,totalInc)}% дохода`:''}${nOther?` · ещё ${nOther} ${plural(nOther,['разовый/годовой','разовых/годовых','разовых/годовых'])}`:''}</div>`:''}
-    </div>
-    <div class="card" id="saveCard"><h2>🐷 Накопления: откладывать в месяц</h2>
+      ${totalPl?`<div class="small sec">Итого в месяц: <b>${money(totalPl)}</b>${totalInc?` — ${pct(totalPl,totalInc)}% дохода`:''}${nOther?` · ещё ${nOther} ${plural(nOther,['разовый/годовой','разовых/годовых','разовых/годовых'])}`:''}</div>`:''}`)}
+    ${sec('limits','🚦 Лимиты по категориям',Object.keys(S.catLimits||{}).length?`${Object.keys(S.catLimits).length} · ${money(Object.values(S.catLimits).reduce((a,b)=>a+(+b||0),0))} в месяц`:'например, кафе не больше 8 000',limitsHtml())}
+    ${sec('save','🐷 Накопления',S.saveMonthly?`${money(S.saveMonthly)} в месяц`:'не откладываю',`
       ${goals().length>1?`<div class="sec" style="font-size:15px">Откладываешь всего <b>${money(S.saveMonthly||0)}</b> в месяц по ${goals().length} целям. Суммы по каждой цели — во вкладке «Счета».</div>
         <button class="btn block" data-goto="debts" style="margin-top:10px">🎯 Открыть цели</button>
         <div style="margin-top:12px"><div class="flabel">Дни пополнения</div>`
@@ -1516,30 +1685,28 @@ function renderSettings(){
         <div><div class="flabel">Дни пополнения</div>`}<input class="inp num" data-bind="piggyDays" inputmode="text" placeholder="с зарплатой" value="${(S.piggy?.days||[]).join(', ')}"></div>
       </div>
       <div class="hint" style="margin:8px 0 0">Дни — числа месяца через запятую, например «10, 25». Пусто — откладываю вместе с авансом и зарплатой. Эти деньги сразу вычитаются из дневного лимита. Несколько копилок с целями и сроками — во вкладке «Счета».</div>
-      <div id="saveAdvice">${piggyLine()}${saveAdviceHtml()}</div>
-    </div>
-    ${totalInc?'':`<div class="card"><h2>Лимит на месяц</h2>
+      <div id="saveAdvice">${piggyLine()}${saveAdviceHtml()}</div>`,' id="saveCard"')}
+    ${totalInc?'':sec('limit','📏 Лимит на месяц',S.budget?money(S.budget):'не задан',`
       <div class="amount-wrap" style="margin:0"><input class="amount-in num" data-bind="budget" inputmode="numeric" placeholder="Не задан" value="${S.budget||''}" style="font-size:28px"><span style="font-size:22px">₽</span></div>
-      <div class="hint" style="margin:8px 0 0">Простой вариант, если не хочешь указывать зарплату.</div></div>`}
-    ${standalone?'':`<div class="card howto"><h2>📲 Установка на iPhone</h2><ol>
-      <li>Открой эту страницу в <b>Safari</b></li><li>Нажми «Поделиться» <span aria-hidden="true">⬆️</span></li>
-      <li>Выбери «На экран „Домой“»</li><li>Запускай с иконки — так данные хранятся надёжнее</li></ol></div>`}
-    <details class="card" id="catsBox"${ui.catsOpen?' open':''}><summary><span>🏷️ Категории · ${S.categories.length}</span><span class="chev">▼</span></summary>
+      <div class="hint" style="margin:8px 0 0">Простой вариант, если не хочешь указывать зарплату.</div>`)}
+    ${sec('cats',`🏷️ Категории`,`${S.categories.length} · можно добавить свою`,`
       <div class="small sec" style="margin-bottom:8px">Категория ставится сама по описанию (в базе ~2 800 слов). Поправишь вручную — запомню. Нажми на метку, чтобы сделать категорию обязательной или повседневной.</div>
       ${S.categories.map(c=>`<div class="cat-edit"><span class="em">${c.emoji}</span><span class="nm">${esc(c.name)}</span>
         <button class="badge${c.kind==='fixed'?' fixed':''}" data-kind="${esc(c.id)}">${c.kind==='fixed'?'обязательная':'повседневная'}</button>
         ${custom.includes(c)?`<button class="x" data-delcat="${esc(c.id)}" aria-label="Удалить категорию">✕</button>`:''}</div>`).join('')}
-      <div class="addcat"><input class="inp e" id="ncE" placeholder="🐶" maxlength="4"><input class="inp" id="ncN" placeholder="Новая категория"><button class="btn primary" data-act="addcat">+</button></div>
-    </details>
-    <div class="card"><h2>💾 Резервная копия</h2>
+      <div class="addcat"><input class="inp e" id="ncE" placeholder="🐶" maxlength="4"><input class="inp" id="ncN" placeholder="Новая категория"><button class="btn primary" data-act="addcat">+</button></div>`)}
+    ${standalone?'':`<div class="card howto"><h2>📲 Установка на iPhone</h2><ol>
+      <li>Открой эту страницу в <b>Safari</b></li><li>Нажми «Поделиться» <span aria-hidden="true">⬆️</span></li>
+      <li>Выбери «На экран „Домой“»</li><li>Запускай с иконки — так данные хранятся надёжнее</li></ol></div>`}
+    ${sec('data','💾 Резервная копия',`последняя: ${S.lastBackup?new Date(S.lastBackup).toLocaleDateString('ru-RU'):'ещё не было'}`,`
       <p class="small sec" style="margin:0 0 12px">Все данные хранятся только на этом устройстве${persisted?' (хранилище закреплено ✅)':''}.
-      Последняя копия: <b>${S.lastBackup?new Date(S.lastBackup).toLocaleDateString('ru-RU'):'ещё не было'}</b>. Раз в неделю напомню сохранить. Сохраняй файл в iCloud Drive или «Файлы».</p>
+      Раз в неделю напомню сохранить копию. Сохраняй файл в iCloud Drive или «Файлы».</p>
       <div class="btns">
         <button class="btn primary block" data-act="backup">💾 Сохранить копию (JSON)</button>
         <button class="btn block" data-act="import">📂 Восстановить из файла</button>
         <button class="btn block" data-act="csv">📄 Выгрузить для Excel (CSV)</button>
         <button class="btn danger block" data-act="wipe">Удалить все данные</button>
-      </div></div>
+      </div>`)}
     <p class="small muted" style="text-align:center;margin:18px 0 4px">Расходы · версия ${APP_VERSION} · записей: ${S.expenses.length+S.extra.length}</p>
     <p class="small muted" style="text-align:center;margin:0 0 8px">Designed &amp; built with ☀️ by <b>dzts_w</b></p>
   `;
@@ -1609,7 +1776,9 @@ function saveForm(){
   if(date.slice(0,7)!==ui.month)ui.month=date.slice(0,7);
   render(); haptic('success');
   const P=period();
-  toast(ui.editId?'Сохранено':`${cat(c).emoji} ${cat(c).name}: ${money(amount)}`+(P&&!isFixed(c)&&date===todayStr()?` · сегодня осталось ${money(Math.max(0,P.todayLeft))}`:''));
+  const lim=+(S.catLimits?.[c])||0, spC=lim?catSpentNow(c):0;
+  if(lim&&spC>lim)haptic('warn');
+  toast(ui.editId?'Сохранено':`${cat(c).emoji} ${cat(c).name}: ${money(amount)}`+(lim?` · ${money(spC)} из ${money(lim)}${spC>lim?' ⚠️':''}`:P&&!isFixed(c)&&date===todayStr()?` · сегодня осталось ${money(Math.max(0,P.todayLeft))}`:''));
   if(persisted===null)askPersist();
 }
 
@@ -1734,6 +1903,89 @@ function renderAccChips(){
   if(accs.length<2){box.hidden=true;box.innerHTML='';return}
   box.hidden=false;
   box.innerHTML=`<div class="grp">${ui.fType==='inc'?'На какой счёт':'С какого счёта'}</div>`+accs.map(a=>`<button class="chip${ui.fAcc===a.id?' on':''}" data-facc="${a.id}">${a.emoji} ${esc(a.name)}</button>`).join('');
+}
+/* ---------- мастер первого запуска ---------- */
+const needsWizard=()=>!S.onboarded&&S.name==null&&!S.expenses.length&&!monthlyIncome()&&!S.accounts.length;
+const WIZ_SUGG=[['🏠','Аренда','rent'],['💡','ЖКХ','utilities'],['💳','Кредит','loans'],['🧾','Сплит','installments'],['🏦','Ипотека','mortgage'],['📶','Связь','comm'],['🔁','Подписки','subs']];
+function openWizard(){ui.wiz={step:0};$('#wiz').hidden=false;renderWizard()}
+function closeWizard(){$('#wiz').hidden=true;S.onboarded=true;S.balAsked=true;if(S.name==null)S.name='';save()}
+function wizStore(){ // сохраняем поля текущего шага
+  const w=ui.wiz, v=id=>$('#'+id)?.value?.trim()??'';
+  if(w.step===0){S.name=v('wName');const b=parseAmount(v('wBal'));
+    if(v('wBal')&&b>=0){const m=mainAcc();if(m){m.start=b;m.ts=Date.now()}else S.accounts.push({id:uid(),type:'main',name:'Карта',emoji:'💳',start:b,ts:Date.now(),exclude:false})}}
+  if(w.step===1){ensureIncomeSlots(S);
+    const set=(i,a,d)=>{const am=parseAmount(v(a)),dy=parseInt(v(d),10);S.incomes[i].amount=am>0?am:0;S.incomes[i].day=dy>=1&&dy<=31?dy:S.incomes[i].day}
+    set(0,'wA1','wD1');set(1,'wA2','wD2')}
+  save();
+}
+function renderWizard(){
+  const w=ui.wiz, N=4;
+  $('#wizDots').innerHTML=Array.from({length:N},(_,i)=>`<i class="${i<=w.step?'on':''}"></i>`).join('');
+  let body='';
+  if(w.step===0)body=`<div class="big">👋</div><h2>Привет! Настроим за минуту</h2>
+    <p class="sec">Ответь на пару вопросов — и приложение будет каждый день показывать, сколько можно потратить.</p>
+    <div class="fl">Как тебя зовут?</div><input class="inp" id="wName" placeholder="Имя" autocomplete="given-name" value="${esc(S.name||'')}">
+    <div class="fl">Сколько сейчас денег на карте?</div><input class="inp num" id="wBal" inputmode="decimal" placeholder="Например, 25 000 (можно пропустить)" value="${mainAcc()?accBalance(mainAcc()):''}">`;
+  if(w.step===1){ensureIncomeSlots(S);const [a,b]=S.incomes;
+    body=`<div class="big">💼</div><h2>Зарплата</h2>
+    <p class="sec">Сумма «на руки» и число месяца, когда приходит. Если зарплата раз в месяц — заполни только одну строку.</p>
+    <div class="fl">Аванс</div><div class="row2" style="grid-template-columns:1fr 90px"><input class="inp num" id="wA1" inputmode="decimal" placeholder="Сумма" value="${a.amount||''}"><input class="inp num" id="wD1" inputmode="numeric" placeholder="Число" value="${a.amount?a.day:''}"></div>
+    <div class="fl">Зарплата</div><div class="row2" style="grid-template-columns:1fr 90px"><input class="inp num" id="wA2" inputmode="decimal" placeholder="Сумма" value="${b.amount||''}"><input class="inp num" id="wD2" inputmode="numeric" placeholder="Число" value="${b.amount?b.day:''}"></div>`}
+  if(w.step===2)body=`<div class="big">📌</div><h2>Обязательные платежи</h2>
+    <p class="sec">Что платишь каждый месяц: аренда, кредит, ЖКХ, связь. Эти деньги я заранее отложу из дневного лимита.</p>
+    <div class="sugg">${WIZ_SUGG.map(([e,n,c])=>`<button class="chip" data-wsugg="${c}" data-wname="${n}">${e} ${n}</button>`).join('')}</div>
+    <input class="inp" id="wpName" placeholder="Название" autocomplete="off">
+    <div class="row2" style="grid-template-columns:1fr 90px;margin-top:8px"><input class="inp num" id="wpAmount" inputmode="decimal" placeholder="Сумма в месяц"><input class="inp num" id="wpDay" inputmode="numeric" placeholder="Число"></div>
+    <button class="btn block" data-act="wizAddPlan" style="margin-top:8px">+ Добавить</button>
+    ${S.planned.length?`<div class="plist">${S.planned.map((p,i)=>`<div class="prow${i===0?' first':''}"><span class="em">${cat(p.cat).emoji}</span><span class="tx"><div class="d1">${esc(p.name)}</div><div class="d2">${money(p.amount)} · ${planWhen(p)}</div></span></div>`).join('')}</div>`:''}
+    <p class="small muted">Разовые платежи, кредиты со ставкой и копилку можно добавить потом в ⚙️ настройках.</p>`;
+  if(w.step===3){const P=period();
+    body=`<div class="big">🎉</div><h2>Готово${S.name?', '+esc(S.name):''}!</h2>
+    ${P?`<div class="hero-res"><div style="opacity:.9">Сегодня можно потратить</div><div class="n">${money(Math.max(0,P.todayLeft))}</div>
+      <div style="opacity:.9">лимит ${money(Math.max(0,P.limit))} в день · до ${fmtD(P.next)} ${days(P.daysLeft)}</div></div>`
+      :`<p class="sec">Записывай траты кнопкой <b>+</b> — категорию я подберу сам. Когда захочешь, укажи зарплату в ⚙️ настройках, и я начну считать дневной лимит.</p>`}
+    <p class="sec">Записывай траты кнопкой <b>+</b> внизу — сумма и пара слов, остальное я сделаю сам.</p>
+    <button class="btn block" data-act="wizLock" style="margin-top:6px">🔒 Поставить код на вход</button>`}
+  const last=w.step===3;
+  $('#wizBody').innerHTML=`<div class="step">${body}</div><div class="foot">
+    ${w.step>0&&!last?'<button class="btn" data-act="wizBack">Назад</button>':'<span></span>'}
+    <button class="btn primary" data-act="wizNext">${last?'Начать ☀️':w.step===0?'Далее':'Далее'}</button></div>`;
+  if(w.step===0)setTimeout(()=>$('#wName')?.focus(),400);
+}
+/* ---------- что нового ---------- */
+const CHANGELOG=[
+  {v:'1.7.0',items:['🧭 Мастер первого запуска — всё настраивается за минуту','🔒 Вход по коду и Face ID: ⚙️ → Профиль и вход','🚦 Лимиты по категориям: например, кафе не больше 8 000 в месяц','⚡ Быстрый старт: приложение может открываться сразу на новой трате','🗂️ Настройки разбиты на разделы — нажми на раздел, чтобы открыть','✨ Вот это окно: теперь после обновления расскажу, что нового','🚚 Новый адрес приложения: dztsw.github.io/OOObnal']},
+  {v:'1.6.0',items:['💳 Дневной лимит считается от денег на счетах','📅 Разовые и годовые платежи: ДР, годовая подписка','🏦 Ставка и даты кредита, совет по досрочке с экономией на процентах']},
+  {v:'1.5.0',items:['💳 Счета, переводы между ними, «не учитывать в балансе»','🎯 Цели-накопления со сроками','📊 Диаграммы по категориям: список, круг, столбцы']},
+];
+const cmpV=(a,b)=>{const x=a.split('.').map(Number),y=b.split('.').map(Number);for(let i=0;i<3;i++){if((x[i]||0)!==(y[i]||0))return (x[i]||0)-(y[i]||0)}return 0};
+function checkChangelog(){
+  const seen=S.seenVersion||'1.6.1'; // у тех, кто пользовался до этой версии, номер ещё не записан
+  S.seenVersion=APP_VERSION; save();
+  if(cmpV(seen,APP_VERSION)>=0)return false;
+  const list=CHANGELOG.filter(c=>cmpV(c.v,seen)>0).slice(0,2);
+  if(!list.length)return false;
+  $('#wnVer').textContent=`версия ${APP_VERSION}`;
+  $('#wnList').innerHTML=list.map((c,i)=>`${list.length>1?`<div class="grp">${i===0?'Сейчас':'Недавно'} · ${c.v}</div>`:''}<ul class="tips" style="margin:6px 0 12px">${c.items.map(x=>`<li class="info"><span>${esc(x)}</span></li>`).join('')}</ul>`).join('');
+  openPanel('#wsheet'); return true;
+}
+// Быстрый старт: по настройке или по ссылке ?add (можно ?add&a=250&d=кофе — сумма и описание)
+function quickOpen(){
+  const q=new URLSearchParams(location.search);
+  if(!S.quickAdd&&!q.has('add'))return false;
+  openSheet();
+  if(q.has('a'))$('#fAmount').value=q.get('a');
+  if(q.has('d')){$('#fDesc').value=q.get('d');$('#fDesc').dispatchEvent(new Event('input',{bubbles:true}))}
+  if(q.has('add'))history.replaceState(null,'',location.pathname);
+  return true;
+}
+// очередь того, что показываем при открытии: что нового → сюрприз → напоминание о копии
+const startupQ=[]; const nextStartup=()=>{const f=startupQ.shift();if(f)f()};
+function runStartup(){
+  startupQ.push(()=>{if(!checkChangelog())nextStartup()});
+  startupQ.push(()=>loveCheck(nextStartup));
+  startupQ.push(()=>{if(quickOpen())return;if(backupDue()&&ui.view==='home'&&!document.querySelector('.sheet.on'))openBackupAsk()});
+  setTimeout(nextStartup,500);
 }
 /* ---------- напоминание о копии ---------- */
 function openBackupAsk(){
@@ -1866,6 +2118,15 @@ document.addEventListener('click',async ev=>{
     const li=loanInfo(p);
     keepScroll(renderHome); toast(li&&li.done?`🎉 ${p.name||'Кредит'} полностью выплачен!`:`✓ ${p.name||cat(p.cat).name} оплачен`);return}
   if(t.dataset.day){const d=Number(t.dataset.day);ui.selDay=ui.selDay===d?null:d;haptic();keepScroll(renderHome);return}
+  if(t.dataset.pin!=null){pinKey(t.dataset.pin);return}
+  if(t.id==='lockFace'){faceUnlock();return}
+  if(t.id==='lockAlt'){
+    if(document.body.classList.contains('locked')){
+      if(confirm('Сбросить код можно только вместе со всеми данными в приложении. Если есть резервная копия — потом восстановишь её из файла. Сбросить?')){
+        S=freshState();ensureIncomeSlots(S);S.onboarded=true;S.name='';save();document.body.classList.remove('locked');hidePin();render();toast('Данные и код сброшены')}}
+    else{hidePin()}
+    return}
+  if(t.dataset.wsugg){$('#wpName').value=t.dataset.wname;ui.wiz.cat=t.dataset.wsugg;haptic();$('#wpAmount').focus();return}
   if(t.dataset.cview){S.chartView=t.dataset.cview;ui.pieSel=null;save();haptic();keepScroll(renderHome);return}
   if(t.closest('[data-pie]')&&!t.dataset.cat){const key=t.closest('[data-pie]').dataset.pie;ui.pieSel=ui.pieSel===key?null:key;haptic();
     ui.noAnim=true;keepScroll(renderHome);ui.noAnim=false;return}
@@ -1882,7 +2143,8 @@ document.addEventListener('click',async ev=>{
       syncSave();save();closeSheet();render();haptic('warn');toast('Удалено')}return}
   if(t.id==='tSave'){saveTransfer();return}
   if(t.dataset.facc){ui.fAcc=t.dataset.facc;haptic();renderAccChips();return}
-  if(t.dataset.pedit){ui.pEdit=t.dataset.pedit;if(ui.view!=='settings'){ui.view='settings';render()}else keepScroll(()=>{renderSettings();syncPlanForm()});haptic();$('#planForm').scrollIntoView({block:'center',behavior:'smooth'});return}
+  if(t.dataset.limdel){delete S.catLimits[t.dataset.limdel];save();haptic('warn');keepScroll(()=>{renderSettings();syncPlanForm()});return}
+  if(t.dataset.pedit){ui.pEdit=t.dataset.pedit;(ui.secOpen||=new Set()).add('planned');if(ui.view!=='settings'){ui.view='settings';render()}else keepScroll(()=>{renderSettings();syncPlanForm()});haptic();$('#planForm').scrollIntoView({block:'center',behavior:'smooth'});return}
   if(t.dataset.pdel){const p=S.planned.find(x=>x.id===t.dataset.pdel);
     if(confirm(`Удалить платёж «${p.name||cat(p.cat).name}»? Уже внесённые оплаты останутся в истории.`)){
       S.planned=S.planned.filter(x=>x.id!==p.id);if(ui.pEdit===p.id)ui.pEdit=null;save();haptic('warn');keepScroll(()=>{renderSettings();syncPlanForm()});toast('Платёж удалён')}return}
@@ -1919,6 +2181,26 @@ document.addEventListener('click',async ev=>{
       S.accounts.push({id:uid(),type:'main',name:'Карта',emoji:'💳',start:v,ts:Date.now(),exclude:false});save();haptic('success');keepScroll(renderHome);toast(`💳 Баланс ${money(v)} записан`);break}
     case 'skipbal':S.balAsked=true;save();keepScroll(renderHome);break;
     case 'transfer':openTransfer();break;
+    case 'limAdd':{const c=$('#lCat').value,a=parseAmount($('#lAmt').value);if(!(a>0)){toast('Введи лимит');haptic('warn');$('#lAmt').focus();return}
+      S.catLimits={...(S.catLimits||{}),[c]:a};save();haptic('success');keepScroll(()=>{renderSettings();syncPlanForm()});toast(`🚦 ${cat(c).name}: не больше ${money(a)} в месяц`);break}
+    case 'wnOk':closeSheet();haptic('success');setTimeout(nextStartup,350);break;
+    case 'pinSet':pinSetupFlow();break;
+    case 'pinChange':pinVerifyThen(pinSetupFlow);break;
+    case 'pinOff':pinVerifyThen(()=>{S.lock=null;save();keepScroll(()=>{renderSettings();syncPlanForm()});toast('Вход по коду выключен')});break;
+    case 'faceOn':enableFace().then(()=>keepScroll(()=>{renderSettings();syncPlanForm()}));break;
+    case 'faceOff':delete S.lock.cred;save();keepScroll(()=>{renderSettings();syncPlanForm()});toast('Face ID выключен');break;
+    case 'wizNext':{wizStore();
+      if(ui.wiz.step===0&&!S.name){toast('Как тебя зовут?');$('#wName').focus();return}
+      if(ui.wiz.step<3){ui.wiz.step++;haptic();renderWizard()}
+      else{closeWizard();ui.view='home';ui.lastView=null;render();haptic('success');confettiAt($('#fab'));toast('Добро пожаловать ☀️')}
+      break}
+    case 'wizBack':wizStore();ui.wiz.step=Math.max(0,ui.wiz.step-1);renderWizard();break;
+    case 'wizAddPlan':{const name=$('#wpName').value.trim(),amount=parseAmount($('#wpAmount').value),day=parseInt($('#wpDay').value,10);
+      if(!name){toast('Название платежа?');$('#wpName').focus();return}
+      if(!(amount>0)){toast('Введи сумму');$('#wpAmount').focus();return}
+      if(!(day>=1&&day<=31)){toast('Число месяца: 1–31');$('#wpDay').focus();return}
+      const g=guess(name);S.planned.push({id:uid(),name,amount,day,cat:ui.wiz.cat||(isFixed(g)?g:'loans'),freq:'month'});ui.wiz.cat=null;save();haptic('success');renderWizard();break}
+    case 'wizLock':closeWizard();ui.view='home';ui.lastView=null;render();pinSetupFlow();break;
     case 'hidehint':S.gearHintOff=true;save();updateChrome();break;
     case 'snooze':S.backupSnooze=todayStr();save();keepScroll(renderHome);toast('Напомню завтра');break;
     case 'addcat':{const n=$('#ncN').value.trim();if(!n){toast('Введи название');return}
@@ -1932,7 +2214,8 @@ document.addEventListener('click',async ev=>{
     case 'wipe':if(confirm('Удалить ВСЕ траты и настройки? Это нельзя отменить.')){S=freshState();ensureIncomeSlots(S);save();render();toast('Всё удалено')}break;
   }
 });
-document.addEventListener('toggle',ev=>{if(ev.target.id==='catsBox')ui.catsOpen=ev.target.open},true);
+document.addEventListener('toggle',ev=>{const k=ev.target.dataset?.sec;if(!k)return;ui.secOpen||=new Set();
+  if(ev.target.open){ui.secOpen.add(k);if(!S.secHintSeen){S.secHintSeen=true;save();document.querySelector('.sec-hint')?.remove()}}else ui.secOpen.delete(k)},true);
 addEventListener('scroll',()=>$('header').classList.toggle('scrolled',scrollY>4),{passive:true});
 // заглушка «поверни телефон»: телефон = короткая сторона экрана до 500px и сенсорный экран
 function checkRotate(){
@@ -1956,6 +2239,7 @@ document.addEventListener('input',ev=>{
   else if(b==='piggyBalance'){const v=parseAmount(el.value),g=soleGoal(true);if(g){g.start=v>0?v:0;g.ts=Date.now()}}
   else if(b==='piggyDays'){const ds=[...new Set((el.value.match(/\d+/g)||[]).map(Number).filter(n=>n>=1&&n<=31))].sort((a,b)=>a-b);S.piggy={...(S.piggy||{}),days:ds}}
   else if(b==='carry'){S.carry=el.checked}
+  else if(b==='quickAdd'){S.quickAdd=el.checked}
   else if(b==='limitMode'){S.limitMode=el.checked?'balance':'salary';keepScroll(()=>{renderSettings();syncPlanForm()})}
   else if(b==='saveMonthly'){const v=parseAmount(el.value),g=soleGoal(v>0);if(g){g.monthly=v>0?v:0;syncSave()}}
   else if(b==='budget'){const v=parseAmount(el.value);S.budget=v>0?v:0}
@@ -1984,23 +2268,35 @@ document.addEventListener('keydown',ev=>{
     if(ev.target.id==='fAmount')$('#fDesc').focus();else saveForm()}
   if(ev.key==='Escape')closeSheet();
   if(ev.key==='Enter'&&ev.target.id==='nameIn'){ev.preventDefault();document.querySelector('[data-act="setname"]').click()}
+  if(/^[0-9]$/.test(ev.key)&&!$('#lock').hidden&&!/INPUT|TEXTAREA/.test(ev.target.tagName)){pinKey(ev.key);return}
+  if(ev.key==='Backspace'&&!$('#lock').hidden&&!/INPUT|TEXTAREA/.test(ev.target.tagName)){pinKey('del');return}
   if(ev.key==='Enter'&&ev.target.id==='balIn'){ev.preventDefault();document.querySelector('[data-act="setbal"]').click()}
 });
-$('#scrim').addEventListener('click',closeSheet);
+$('#scrim').addEventListener('click',()=>{const wn=$('#wsheet').classList.contains('on');closeSheet();if(wn)setTimeout(nextStartup,350)});
 $('#importFile').addEventListener('change',e=>{const f=e.target.files[0];if(f)importFile(f);e.target.value=''});
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S&&ui.view!=='settings')render()});
+let hiddenAt=0;
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){hiddenAt=Date.now();return}
+  if(S?.lock?.pin&&!document.body.classList.contains('locked')&&hiddenAt&&Date.now()-hiddenAt>60000){afterUnlock=null;lockNow();return}
+  if(S&&ui.view!=='settings')render();
+  // вернулись в приложение спустя пару минут — сразу окно новой траты
+  if(S?.quickAdd&&hiddenAt&&Date.now()-hiddenAt>120000&&!document.querySelector('.sheet.on')&&$('#wiz').hidden)openSheet()});
 
 /* ---------- старт ---------- */
 (async()=>{
   S=freshState(); compileKW();
   S=migrate(await loadState());
+  if(!needsWizard()&&!S.onboarded)S.onboarded=true; // у кого уже есть данные — мастер не показываем
+  if(needsWizard())S.seenVersion=APP_VERSION;
+  if(S.lock?.pin)document.body.classList.add('locked');
   save(); render();
-  setTimeout(loveCheck,700);
+  faceAvailable().then(v=>{ui.faceAvail=v;if(ui.view==='settings')render()});
+  if(needsWizard())openWizard();
+  else if(S.lock?.pin){afterUnlock=runStartup;lockNow()}
+  else runStartup();
   if(S.expenses.length)askPersist().then(()=>ui.view==='settings'&&render());
   try{screen.orientation?.lock?.('portrait').catch(()=>{})}catch(e){}
   if(!S.carryFrom){const b=bounds(sod(new Date()));S.carryFrom=b?ymd(b.start):todayStr();save()}
-  // раз в неделю предлагаем сохранить копию
-  if(backupDue())setTimeout(()=>{if(ui.view==='home'&&!document.querySelector('.sheet.on'))openBackupAsk()},1200);
   if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))
     navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();
