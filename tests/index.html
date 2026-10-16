@@ -425,6 +425,24 @@ const tests=[
   eq($('#curGrid').querySelectorAll('button').length,ev('CURS.length'),'не все валюты'); $('[data-cur="USD"]').click();
   eq($('#fCur').value,'USD','валюта не выбрана'); ok($('#curPick').hidden,'меню не закрылось'); eq($('#curBtn').textContent,'$','символ в кружке'); ok($('#curBtn').classList.contains('fx'),'кружок не подсветился');
 }],
+['Заплатил за всех: доля, долги друзей, напоминание в день возврата', async()=>{
+  const {ev,$,W}=await app(); baseState(ev); const f0=ev('period().free');
+  ev('openSplit()'); $('#spTotal').value='3000'; $('#spTotal').dispatchEvent(new W.Event('input',{bubbles:true})); $('#spDesc').value='Ресторан';
+  ev("ui.split.friends=[{name:'Саша',amount:''},{name:'Маша',amount:''}];renderSplit()");
+  ok(txt($('#spSum')).includes('1 000'),'не поделилось поровну на троих');
+  $('#spDue').value=ev('todayStr()'); $('[data-act="spSave"]').click();
+  const e=ev("S.expenses.find(x=>x.desc==='Ресторан')"); eq(e.amount,1000,'моя доля'); eq(e.cat,'cafe','категория');
+  eq(ev("S.debts.filter(d=>d.dir==='out').length"),2,'долги друзей'); eq(ev('period().free'),f0-3000,'весь чек ушёл со счёта');
+  eq(ev('maybeRemind()'),true,'в день возврата нет напоминания'); ok(txt($('#rsheet')).includes('Проверь перевод'),'нет текста напоминания');
+  $('[data-act="rAll"]').click(); await new Promise(r=>setTimeout(r,500));
+  eq(ev("S.debts.filter(d=>debtLeft(d)>0).length"),1,'первый долг не закрылся'); ok($('#rsheet').classList.contains('on'),'второе напоминание не показалось');
+  $('[data-act="rLater"]').click(); await new Promise(r=>setTimeout(r,400)); eq(ev('maybeRemind()'),false,'«напомни завтра» — сегодня не спрашивать');
+}],
+['Мастер: интерфейс под ним скрыт, прокрутки нет', async()=>{
+  const {ev,$,W}=await app(375,812,{keep:true});
+  ok(W.document.documentElement.classList.contains('wiz-on'),'нет блокировки'); eq(W.getComputedStyle($('main')).display,'none','интерфейс виден под мастером');
+  ev('closeWizard()'); ok(!W.document.documentElement.classList.contains('wiz-on'),'блокировка не снялась');
+}],
 ['Внизу настроек: версия и подпись «Developed & released by dzts_w»', async()=>{
   const {ev,$}=await app(); ev("go('settings')");
   const t=txt($('#v-settings')); ok(t.includes('версия '+ev('APP_VERSION')),'нет версии'); ok(t.includes('Developed & released by dzts_w'),'нет подписи'); ok(!t.includes('Designed')&&!t.includes('☀️ by'),'осталась старая подпись');

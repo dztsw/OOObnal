@@ -407,7 +407,9 @@ details.sect[open]>summary .chev::before{content:"свернуть ▴";font-siz
 .pad button.txt{font-size:15px;background:transparent;border:0}
 body.locked header,body.locked main,body.locked nav.tabs{visibility:hidden}
 /* мастер первого запуска */
-.wiz{position:fixed;inset:0;z-index:80;background:var(--bg);overflow:auto;padding:calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 18px)}
+html.wiz-on,html.wiz-on body{overflow:hidden;height:100%;overscroll-behavior:none}
+html.wiz-on header,html.wiz-on main,html.wiz-on nav.tabs,html.wiz-on .bgfx{display:none!important} /* пока идёт мастер — интерфейса под ним нет вообще */
+.wiz{position:fixed;inset:0;z-index:80;background:var(--bg);overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 18px)}
 .wiz .in{max-width:520px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
 .wiz .wdots{display:flex;gap:6px;justify-content:center;margin-bottom:18px}
 .wiz .wdots i{width:28px;height:5px;border-radius:3px;background:var(--line);transition:background .3s}
@@ -555,6 +557,11 @@ html[data-skin="official"] .hl .ring{background:conic-gradient(#0d4cd3,#4d8bff,#
 html[data-skin="official"] .hl .seen .ring{background:var(--base)}
 .recap .t.lg{font-size:24px;font-weight:750}
 .recap a.btn{text-decoration:none;display:flex}
+.frow{display:grid;grid-template-columns:1fr 104px 34px;gap:6px;margin-bottom:8px;align-items:center}
+.frow .inp{padding:10px}
+.frow .x{color:var(--muted);font-size:18px;height:40px}
+.split-sum{display:flex;justify-content:space-between;gap:8px;padding:10px 12px;border-radius:14px;background:var(--bg);border:1px solid var(--ring);font-size:14px;color:var(--ink2);margin:6px 0 12px}
+.split-sum b{color:var(--ink)} .split-sum .bad{color:var(--bad)}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
@@ -615,6 +622,34 @@ html[data-skin="official"] .hl .seen .ring{background:var(--base)}
     <button class="btn primary block" id="fSave">Сохранить</button>
     <button class="btn danger block" id="fDel" hidden>Удалить</button>
   </div>
+</div>
+<!-- шторка: заплатил за всех -->
+<div class="sheet" id="ssheet" role="dialog" aria-modal="true">
+  <div class="grab"></div>
+  <div class="sheet-h"><h3>🧾 Заплатил за всех</h3><button class="btn sm" data-close>Закрыть</button></div>
+  <div class="small sec" style="margin:-4px 0 10px">Ты оплатил общий счёт — запишу твою долю как трату, а друзей как тех, кто тебе должен. В день возврата напомню проверить перевод.</div>
+  <div class="flabel">Сумма всего чека</div>
+  <div class="amount-wrap"><input class="amount-in num" id="spTotal" inputmode="decimal" placeholder="0" autocomplete="off"><span>₽</span></div>
+  <input class="inp" id="spDesc" placeholder="За что? Ресторан, такси, подарок…" autocomplete="off" style="margin-bottom:10px">
+  <label class="check" style="margin:0 2px 10px"><input type="checkbox" id="spEqual" checked><span>Делить поровну, включая меня</span></label>
+  <div class="flabel">Кто сколько должен</div>
+  <div id="spFriends"></div>
+  <button class="btn ghost" data-act="spAdd">+ Добавить друга</button>
+  <div class="split-sum" id="spSum"></div>
+  <div class="row2 eq" style="margin-bottom:14px">
+    <div><div class="flabel">Когда платил</div><input class="inp" id="spDate" type="date"></div>
+    <div><div class="flabel">Вернуть до</div><input class="inp" id="spDue" type="date"></div>
+  </div>
+  <button class="btn primary block" data-act="spSave">Сохранить</button>
+</div>
+<!-- шторка: напоминание о долге -->
+<div class="sheet" id="rsheet" role="dialog" aria-modal="true">
+  <div class="grab"></div>
+  <div style="text-align:center;padding:4px 4px 10px"><div style="font-size:46px" id="rEm">🤝</div>
+    <h3 style="margin:4px 0 6px;font-size:21px" id="rT"></h3><div class="sec" id="rS"></div></div>
+  <div class="btns" id="rBtns"></div>
+  <div id="rPartBox" hidden><div class="flabel">Сколько пришло</div>
+    <div class="row2" style="margin-bottom:8px"><input class="inp num" id="rAmt" inputmode="decimal" placeholder="Сумма"><button class="btn primary" data-act="rPartSave">Записать</button></div></div>
 </div>
 <!-- шторка: долг человеку / от человека -->
 <div class="sheet" id="dsheet" role="dialog" aria-modal="true">
@@ -758,7 +793,7 @@ const M_DAT=['январю','февралю','марту','апрелю','маю
 const WD=['вс','пн','вт','ср','чт','пт','сб'];
 const DAY=864e5;
 const DEBT_CATS=new Set(['loans','mortgage','installments']);
-const APP_VERSION='1.10.1';
+const APP_VERSION='1.11.0';
 const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------- утилиты ---------- */
@@ -2031,6 +2066,7 @@ function renderDebts(){
     <div class="card"><h2>🤝 Займы с людьми</h2>
       <div class="btns two" style="margin-bottom:${open.length?'12px':'0'}">
         <button class="btn primary" data-newdebt="out">🫴 Дал в долг</button><button class="btn" data-newdebt="in">🙏 Взял в долг</button></div>
+      <button class="btn block" data-act="splitNew" style="margin:-4px 0 12px">🧾 Заплатил за всех — разделить счёт</button>
       ${open.map(debtRow).join('')}
       ${!open.length?'<p class="small muted" style="margin:10px 2px 0">Тут будут долги друзьям и от друзей со сроками — напомню, когда пора вернуть.</p>':''}
       ${closed.length?`<details style="margin-top:10px"><summary class="small muted" style="cursor:pointer">Закрытые (${closed.length})</summary>${closed.map(debtRow).join('')}</details>`:''}
@@ -2326,6 +2362,72 @@ function debtReturn(d,amount,btn){
   toast(closed?`🎉 Долг закрыт: ${d.who}`:`Записал: вернули ${money(amount)}`);
 }
 
+/* ---------- заплатил за всех ---------- */
+function openSplit(){
+  ui.split={friends:[{name:'',amount:''}]};
+  $('#spTotal').value='';$('#spDesc').value='';$('#spEqual').checked=true;
+  $('#spDate').value=todayStr();$('#spDue').value=ymd(new Date(Date.now()+7*DAY));
+  renderSplit(); openPanel('#ssheet'); setTimeout(()=>$('#spTotal').focus(),300);
+}
+function splitCalc(){
+  const total=parseAmount($('#spTotal').value)||0, fr=ui.split.friends, eq=$('#spEqual').checked;
+  if(eq){const per=Math.round(total/(fr.length+1)*100)/100; fr.forEach(f=>f.amount=per?String(per).replace('.',','):'');}
+  const others=fr.reduce((s,f)=>s+(parseAmount(f.amount)||0),0), mine=Math.round((total-others)*100)/100;
+  return {total,others,mine};
+}
+function renderSplit(){
+  const eq=$('#spEqual').checked, {total,others,mine}=splitCalc();
+  $('#spFriends').innerHTML=ui.split.friends.map((f,i)=>`<div class="frow">
+    <input class="inp" data-spname="${i}" placeholder="Имя друга" value="${esc(f.name)}" autocomplete="off">
+    <input class="inp num" data-spamt="${i}" inputmode="decimal" placeholder="Сумма" value="${esc(f.amount)}"${eq?' readonly':''}>
+    <button class="x" data-spdel="${i}" aria-label="Убрать">✕</button></div>`).join('');
+  $('#spSum').innerHTML=total?`<span>Моя доля: <b>${money(mine)}</b></span><span${mine<0?' class="bad"':''}>друзья должны: <b>${money(others)}</b></span>`:'<span>Впиши сумму чека — посчитаю доли</span>';
+}
+function updSplitSum(){ // без перерисовки полей — чтобы не сбивать ввод
+  const eq=$('#spEqual').checked, {total,others,mine}=splitCalc();
+  if(eq)ui.split.friends.forEach((f,i)=>{const el=document.querySelector(`[data-spamt="${i}"]`);if(el)el.value=f.amount});
+  $('#spSum').innerHTML=total?`<span>Моя доля: <b>${money(mine)}</b></span><span${mine<0?' class="bad"':''}>друзья должны: <b>${money(others)}</b></span>`:'<span>Впиши сумму чека — посчитаю доли</span>';
+}
+function saveSplit(){
+  const {total,mine}=splitCalc(), desc=$('#spDesc').value.trim()||'Общий счёт', date=$('#spDate').value||todayStr(), due=$('#spDue').value||'';
+  const fr=ui.split.friends.filter(f=>f.name.trim()&&parseAmount(f.amount)>0);
+  if(!(total>0)){toast('Впиши сумму чека');haptic('warn');$('#spTotal').focus();return}
+  if(!fr.length){toast('Добавь хотя бы одного друга с суммой');haptic('warn');return}
+  if(mine<0){toast('Друзья должны больше, чем весь чек — проверь суммы');haptic('warn');return}
+  const sid=uid();
+  if(mine>0){const e={id:uid(),amount:mine,desc,date,cat:guess(desc)||'other',ts:Date.now(),split:sid};S.expenses.push(e)}
+  for(const f of fr){const d={id:uid(),dir:'out',who:f.name.trim(),amount:parseAmount(f.amount),date,due,note:`за «${desc}»`,affect:true,returns:[],ts:Date.now(),split:sid};
+    S.debts.push(d);debtMoney(d,d.amount,date,false)}
+  save();closeSheet();render();haptic('success');confettiAt($('#fab'));
+  toast(`🧾 Записал: твоя доля ${money(mine)}, тебе должны ${fr.length} ${plural(fr.length,['человек','человека','человек'])}`);
+}
+/* ---------- напоминание вернуть / проверить перевод ---------- */
+// В день «вернуть до» (и позже, пока не закрыт) спрашиваем: пришёл ли перевод от друга / не забыл ли вернуть сам
+function dueDebts(){
+  const T=todayStr();
+  return S.debts.filter(d=>debtLeft(d)>0&&d.due&&d.due<=T&&d.remindDay!==T);
+}
+let remindQ=null;
+function maybeRemind(done){
+  const list=dueDebts(); if(!list.length)return false;
+  remindQ={list,done}; showRemind(); return true;
+}
+function showRemind(){
+  const d=remindQ.list[0], late=daysUntil(d.due)<0, out=d.dir==='out';
+  $('#rEm').textContent=out?'💸':'⏰';
+  $('#rT').textContent=out?`Проверь перевод от ${d.who}`:`Пора вернуть: ${d.who}`;
+  $('#rS').innerHTML=`${out?`${esc(d.who)} должен(на) тебе`:'Ты должен(на)'} <b>${money(debtLeft(d))}</b>${d.note?` ${esc(d.note)}`:''}.<br>${late?`Срок был ${fmtDs(d.due)}`:'Срок — сегодня'}.`;
+  $('#rBtns').innerHTML=out
+    ?`<button class="btn primary block" data-act="rAll">✅ Перевод пришёл</button><button class="btn block" data-act="rPart">Пришла только часть</button><button class="btn block" data-act="rLater">⏳ Ещё нет — напомни завтра</button>`
+    :`<button class="btn primary block" data-act="rAll">✅ Я вернул(а)</button><button class="btn block" data-act="rPart">Вернул(а) часть</button><button class="btn block" data-act="rLater">⏳ Напомни завтра</button>`;
+  $('#rBtns').hidden=false; $('#rPartBox').hidden=true; $('#rAmt').value='';
+  openPanel('#rsheet');
+}
+function remindNext(){
+  const d=remindQ.list.shift(); d.remindDay=todayStr(); save();
+  if(remindQ.list.length){closeSheet();setTimeout(showRemind,350)}
+  else{const done=remindQ.done;remindQ=null;closeSheet();render();if(done)setTimeout(done,350)}
+}
 /* ---------- шторки счетов и переводов ---------- */
 function openAcc(id,type='acc'){
   const a=id&&S.accounts.find(x=>x.id===id); ui.aEdit=a?a.id:null; ui.aType=a?(a.type==='goal'?'goal':'acc'):type;
@@ -2401,8 +2503,8 @@ function renderAccChips(){
 /* ---------- мастер первого запуска ---------- */
 const needsWizard=()=>!S.onboarded&&S.name==null&&!S.expenses.length&&!monthlyIncome()&&!S.accounts.length;
 const WIZ_SUGG=[['🏠','Аренда','rent'],['💡','ЖКХ','utilities'],['💳','Кредит','loans'],['🧾','Сплит','installments'],['🏦','Ипотека','mortgage'],['📶','Связь','comm'],['🔁','Подписки','subs']];
-function openWizard(){ui.wiz={step:0};$('#wiz').hidden=false;renderWizard()}
-function closeWizard(){$('#wiz').hidden=true;S.onboarded=true;S.balAsked=true;if(S.name==null)S.name='';save()}
+function openWizard(){ui.wiz={step:0};document.documentElement.classList.add('wiz-on');$('#wiz').hidden=false;renderWizard()}
+function closeWizard(){document.documentElement.classList.remove('wiz-on');$('#wiz').hidden=true;S.onboarded=true;S.balAsked=true;if(S.name==null)S.name='';save()}
 function wizStore(){ // сохраняем поля текущего шага
   const w=ui.wiz, v=id=>$('#'+id)?.value?.trim()??'';
   if(w.step===0){S.name=v('wName');const b=parseAmount(v('wBal'));
@@ -2575,6 +2677,7 @@ function payAnswer(status,amount){
 }
 /* ---------- что нового ---------- */
 const CHANGELOG=[
+  {v:'1.11.0',items:['🧾 «Заплатил за всех»: раздели счёт с друзьями — кто сколько должен и до какого числа (вкладка «Счета»)','💸 В день возврата напомню проверить перевод от друга — или вернуть долг самому','🧭 Мастер первого запуска больше не прокручивается и не показывает приложение раньше времени']},
   {v:'1.10.1',items:['📲 Инструкция по установке для iPhone и Android — отдельным разделом в ⚙️ настройках']},
   {v:'1.10.0',items:['📖 «Что нового» теперь в формате сторис — по одному пункту на слайд','⭕ Кружки сверху на главной: обновление, итоги месяца и «спасибо» с контактами для идей','💼 В день зарплаты спрошу, пришла ли она и та ли сумма. Пришло другое — пересчитаю лимит и накопления. Ещё не пришла — буду спрашивать каждый день и пока не учитывать её']},
   {v:'1.9.1',items:['🎙️ Подсказка, как говорить: «булочка — 250 рублей», по одной покупке','🔢 Сумма теперь достаётся, даже если продиктовать через микрофон клавиатуры','💱 Валюта — в кружочке с бегущим кольцом и своим красивым меню с флагами']},
@@ -2653,6 +2756,7 @@ const startupQ=[]; const nextStartup=()=>{const f=startupQ.shift();if(f)f()};
 function runStartup(){
   startupQ.push(()=>{if(!checkChangelog())nextStartup()});
   startupQ.push(()=>{if(!maybeAskPay(nextStartup))nextStartup()});
+  startupQ.push(()=>{if(!maybeRemind(nextStartup))nextStartup()});
   startupQ.push(()=>{if(!maybeRecap(nextStartup))nextStartup()});
   startupQ.push(()=>loveCheck(nextStartup));
   startupQ.push(()=>{if(quickOpen())return;if(backupDue()&&ui.view==='home'&&!document.querySelector('.sheet.on'))openBackupAsk()});
@@ -2791,6 +2895,7 @@ document.addEventListener('click',async ev=>{
     keepScroll(renderHome); toast(li&&li.done?`🎉 ${p.name||'Кредит'} полностью выплачен!`:`✓ ${p.name||cat(p.cat).name} оплачен`);return}
   if(t.dataset.day){const d=Number(t.dataset.day);ui.selDay=ui.selDay===d?null:d;haptic();keepScroll(renderHome);return}
   if(t.dataset.pin!=null){pinKey(t.dataset.pin);return}
+  if(t.dataset.spdel!=null){ui.split.friends.splice(+t.dataset.spdel,1);if(!ui.split.friends.length)ui.split.friends.push({name:'',amount:''});renderSplit();return}
   if(t.dataset.recap){openRecap(t.dataset.recap);return}
   if(t.dataset.hl){const k=t.dataset.hl;haptic();
     if(k==='news'){const l=lastNews();openStory('news',newsSlides(l.length?l:CHANGELOG.slice(0,1)))}
@@ -2881,6 +2986,13 @@ document.addEventListener('click',async ev=>{
       S.accounts.push({id:uid(),type:'main',name:'Карта',emoji:'💳',start:v,ts:Date.now(),exclude:false});save();haptic('success');keepScroll(renderHome);toast(`💳 Баланс ${money(v)} записан`);break}
     case 'skipbal':S.balAsked=true;save();keepScroll(renderHome);break;
     case 'transfer':openTransfer();break;
+    case 'splitNew':openSplit();break;
+    case 'spAdd':ui.split.friends.push({name:'',amount:''});renderSplit();setTimeout(()=>document.querySelector(`[data-spname="${ui.split.friends.length-1}"]`)?.focus(),50);break;
+    case 'spSave':saveSplit();break;
+    case 'rAll':{const d=remindQ.list[0];debtReturn(d,debtLeft(d),t);remindNext();break}
+    case 'rPart':$('#rBtns').hidden=true;$('#rPartBox').hidden=false;setTimeout(()=>$('#rAmt').focus(),100);break;
+    case 'rPartSave':{const a=parseAmount($('#rAmt').value);if(!(a>0)){toast('Сколько?');return}debtReturn(remindQ.list[0],a,t);remindNext();break}
+    case 'rLater':toast('Хорошо, напомню завтра');remindNext();break;
     case 'payOk':payAnswer('ok');break;
     case 'payWait':payAnswer('wait');break;
     case 'payDiff':$('#payBtns').hidden=true;$('#payDiffBox').hidden=false;setTimeout(()=>$('#payAmt').focus(),100);break;
@@ -2937,6 +3049,10 @@ document.addEventListener('input',ev=>{
   const el=ev.target;
   if(el.id==='fDesc'){ui.fGuess=guess(el.value);if(!ui.fManual)ui.fCat=ui.fGuess;renderChips();return}
   if(el.id==='search'){ui.search=el.value;renderHistory();return}
+  if(el.dataset?.spname!=null){ui.split.friends[+el.dataset.spname].name=el.value;return}
+  if(el.dataset?.spamt!=null){ui.split.friends[+el.dataset.spamt].amount=el.value;updSplitSum();return}
+  if(el.id==='spTotal'){updSplitSum();return}
+  if(el.id==='spEqual'){renderSplit();return}
   if(el.id==='fAmount'||el.id==='fRateIn'||el.id==='fCur'){syncRate()}
   if(['aBal','aTarget','aDeadline'].includes(el.id)){updateNeed();return}
   if(el.id==='pName'&&!ui.pEdit){const g=guess(el.value);if(g&&(isFixed(g)||$('#pFreq').value!=='month'))$('#pCat').value=g;syncPlanForm();return}
@@ -2985,7 +3101,8 @@ document.addEventListener('keydown',ev=>{
 });
 $('#scrim').addEventListener('click',()=>{const wn=$('#wsheet').classList.contains('on'), pq=$('#paysheet').classList.contains('on')&&payQ;closeSheet();
   if(wn)setTimeout(nextStartup,350);
-  if(pq){const d=payQ.done;payQ=null;S.payAsked=null;save();if(d)setTimeout(d,350)}}); // закрыл без ответа — спросим при следующем открытии
+  if(pq){const d=payQ.done;payQ=null;S.payAsked=null;save();if(d)setTimeout(d,350)}
+  if(remindQ){const d=remindQ.done;remindQ=null;if(d)setTimeout(d,350)}}); // закрыл без ответа — спросим при следующем открытии
 $('#scanFile').addEventListener('change',e=>{const f=e.target.files[0];e.target.value='';if(f){$('#scan').hidden=false;$('#scanMsg').textContent='Ищу QR-код на фото…';scanFromImage(f).catch(()=>{$('#scanMsg').textContent='Не получилось открыть фото'})}});
 $('#bankFile').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
   try{const ops=bankParse(await readTextSmart(f));if(!ops||!ops.length){toast('Не нашёл операций. Нужна выписка в формате CSV');return}openImport(ops)}
