@@ -262,6 +262,7 @@ const tests=[
 ['Мастер первого запуска: имя, баланс, зарплата, платёж → лимит', async()=>{
   const {ev,$}=await app(375,812,{keep:true});
   ok(!$('#wiz').hidden,'мастер не открылся при первом входе');
+  $('[data-wlang="ru"]').click(); $('[data-act="wizNext"]').click(); $('[data-wcur="RUB"]').click(); $('[data-act="wizNext"]').click();
   $('#wName').value='Тест'; $('#wBal').value='30000'; $('[data-act="wizNext"]').click();
   $('#wA1').value='40000'; $('#wD1').value=String(shift(-3).getDate()); $('#wA2').value='60000'; $('#wD2').value=String(shift(5).getDate()); $('[data-act="wizNext"]').click();
   $('[data-wsugg="rent"]').click(); $('#wpAmount').value='20000'; $('#wpDay').value='1'; $('[data-act="wizAddPlan"]').click();
@@ -279,12 +280,12 @@ const tests=[
   for(const k of '1234')$(`[data-pin="${k}"]`).click(); await sleep(300);
   ok(!doc.body.classList.contains('locked')&&$('#lock').hidden,'не пустило с верным кодом');
 }],
-['«Что нового» сторис: всё пропущенное, по пункту на слайд, два входа подряд', async()=>{
+['«Что нового» сторис: всё пропущенное, по пункту на слайд, один раз', async()=>{
   const {ev,$}=await app(); ev("S.seenVersion='1.4.0';S.wnPending=null");
   eq(ev('checkChangelog()'),true,'1-й вход: сторис не показаны'); ok(!$('#recap').hidden,'сторис не открылись');
   const all=ev("recapState.slides.map(s=>s.t).join(' | ')"); ok(all.includes('Мастер первого запуска')&&all.includes('В день зарплаты спрошу'),'не все пропущенные пункты');
   ok(ev("recapState.slides.at(-1).link.href")==='https://t.me/dzts_w','на последнем слайде нет ссылки на Telegram');
-  ev('closeRecap()'); eq(ev('checkChangelog()'),true,'2-й вход: не показаны'); ev('closeRecap()'); eq(ev('checkChangelog()'),false,'3-й вход: лишний раз');
+  ev('closeRecap()'); eq(ev('checkChangelog()'),false,'2-й вход: показали второй раз');
 }],
 ['Кружки историй: обновление, итоги, спасибо', async()=>{
   const {ev,$}=await app(); baseState(ev);
@@ -480,6 +481,130 @@ const tests=[
   const bad=[];let n=0;
   for(const [c,l] of Object.entries(T))for(const w of l){n++;const g=ev(`dictGuess(norm(${JSON.stringify(w)}))`);if(g!==c)bad.push(`${w} → ${g} (ждал ${c})`)}
   if(bad.length)throw new Error(`${bad.length} из ${n}: `+bad.join('; '));
+  return `${n} фраз`;
+}],
+['Язык по умолчанию — русский, у старых данных — рубль и русский', async()=>{
+  const {ev,doc}=await app();
+  eq(ev('S.lang'),'ru','язык'); eq(ev('S.baseCur'),'RUB','валюта'); eq(doc.documentElement.lang,'ru','lang у страницы');
+  const st=ev("migrate({expenses:[{id:'a',amount:100,desc:'Кофе',cat:'cafe',date:'2025-01-01'}],incomes:[],categories:defaultCats(),v:4})");
+  eq(st.lang,'ru','язык после миграции'); eq(st.baseCur,'RUB','валюта после миграции'); eq(st.expenses.length,1,'данные на месте');
+  eq(ev("money(1234)").replace(/[  ]/g,' '),'1 234 ₽','формат в рублях');
+}],
+['Мастер: шаг языка и шаг «Какая у тебя валюта?»', async()=>{
+  const {ev,$,W}=await app(375,812,{keep:true});
+  ok($('[data-wlang="ru"]')&&$('[data-wlang="en"]'),'нет выбора языка на первом шаге'); ok(txt($('#wizBody')).includes('Язык / Language'),'нет заголовка «Язык / Language»');
+  $('[data-wlang="en"]').click(); ok(txt($('#wizBody')).includes('Next'),'после выбора English кнопка не по-английски');
+  $('[data-wlang="ru"]').click(); ok(txt($('#wizBody')).includes('Далее'),'после выбора «Русский» кнопка не по-русски');
+  $('[data-act="wizNext"]').click(); eq(ev('S.lang'),'ru','язык не сохранился');
+  ok(txt($('#wizBody')).includes('Какая у тебя валюта?'),'нет шага валюты');
+  eq($('#wizBody .curgrid').querySelectorAll('button').length,ev('CURS.length'),'не все валюты в сетке');
+  $('[data-wcur="USD"]').click(); ok($('[data-wcur="USD"]').classList.contains('on'),'плитка не выделилась');
+  $('[data-act="wizNext"]').click(); eq(ev('S.baseCur'),'USD','валюта не сохранилась'); ok($('#wName'),'после валюты нет шага с именем');
+  ok(W.getComputedStyle($('#wiz')).overflowY!=='visible','мастер без прокрутки внутри');
+  eq(ev('money(1500)').replace(/[  ]/g,' '),'1 500 $','сумма в выбранной валюте');
+  $('[data-act="wizBack"]').click(); $('[data-wcur="EUR"]').click(); $('[data-act="wizNext"]').click(); eq(ev('S.baseCur'),'EUR','смена валюты кнопкой «Назад»');
+  ev('closeWizard()');
+}],
+['Базовая валюта: суммы на главной и в формах в своей валюте, смена в настройках с предупреждением', async()=>{
+  const {ev,$,W}=await app(); baseState(ev,"S.baseCur='EUR';S.expenses.push({id:'e1',amount:20,desc:'Кофе',cat:'cafe',date:todayStr(),ts:1})");
+  ev('syncBaseSym();render()');
+  ok(txt($('#v-home')).includes('€'),'на главной нет значка евро'); ok(!txt($('#v-home')).includes('₽'),'на главной остались рубли');
+  ev('openSheet()'); eq($('#fCur').value,'EUR','валюта формы по умолчанию — не базовая'); ok($('#fRate').hidden,'курс показан для базовой валюты'); eq($('#curBtn').textContent,'€','значок в кружке'); ev('closeSheet()');
+  ok([...W.document.querySelectorAll('.bsym')].every(e=>e.textContent==='€'),'в статичных полях остался ₽');
+  ev("go('settings')"); const sel=$('[data-bind="baseCur"]'); ok(sel,'нет переключателя валюты в настройках');
+  ok(txt($('details[data-sec="profile"]')).includes('не пересчитываются'),'нет предупреждения про пересчёт');
+  let asked=''; W.confirm=m=>{asked=m;return false}; sel.value='USD'; sel.dispatchEvent(new W.Event('input',{bubbles:true}));
+  ok(asked.includes('не пересчитаются'),'не спросили подтверждение'); eq(ev('S.baseCur'),'EUR','сменилось без подтверждения');
+  W.confirm=()=>true; $('[data-bind="baseCur"]').value='USD'; $('[data-bind="baseCur"]').dispatchEvent(new W.Event('input',{bubbles:true}));
+  eq(ev('S.baseCur'),'USD','не сменилась'); eq(ev("S.expenses.find(e=>e.id==='e1').amount"),20,'сумма пересчиталась, а не должна');
+}],
+['Траты в другой валюте пересчитываются в базовую; курс ЦБ — через рубль', async()=>{
+  const {ev,$,W}=await app(); baseState(ev,"S.baseCur='USD'");
+  ev('openSheet()'); $('#fAmount').value='10'; $('#fCur').value='EUR'; $('#fCur').dispatchEvent(new W.Event('change',{bubbles:true}));
+  ok(!$('#fRate').hidden,'нет поля курса'); eq(txt($('#fRate .bsym')),'$','курс не в долларах');
+  W.fetch=async()=>({json:async()=>({Valute:{USD:{Value:90,Nominal:1},EUR:{Value:99,Nominal:1},KZT:{Value:18,Nominal:100}}})});
+  $('#fRateCbr').click(); await sleep(100);
+  eq($('#fRateIn').value,'1,1','кросс-курс EUR→USD'); $('#fDesc').value='Coffee in Rome'; ev('saveForm()');
+  const e=ev('S.expenses.at(-1)'); eq(e.amount,11,'сумма в долларах'); eq(e.cur,'EUR','валюта'); eq(e.camt,10,'исходная сумма'); eq(e.rate,1.1,'курс');
+  eq(ev("S.rates['EUR/USD']"),1.1,'курс запомнился для пары');
+  // рубль как трата в другой валюте при базовом долларе
+  ev('openSheet()'); $('#fAmount').value='900'; $('#fCur').value='RUB'; $('#fCur').dispatchEvent(new W.Event('change',{bubbles:true}));
+  $('#fRateCbr').click(); await sleep(100); eq(Number($('#fRateIn').value.replace(',','.')),Math.round(1/90*10000)/10000,'курс RUB→USD');
+  ev('closeSheet()');
+  // и для рублёвой базы всё как раньше
+  ev("S.baseCur='RUB'"); ev('openSheet()'); $('#fCur').value='KZT'; $('#fCur').dispatchEvent(new W.Event('change',{bubbles:true}));
+  $('#fRateIn').value=''; $('#fRateCbr').click(); await sleep(100); eq($('#fRateIn').value,'0,18','курс тенге к рублю');
+}],
+['English: весь интерфейс по-английски, без русских букв', async()=>{
+  const {ev,$,W,doc}=await app(); baseState(ev,`S.name='Alex';S.lang='en';S.baseCur='USD';
+    S.planned=[{id:'p1',name:'Rent',amount:900,day:${shift(2).getDate()},cat:'rent'}];
+    S.expenses.push({id:'e1',amount:4.5,desc:'Coffee',cat:'cafe',date:todayStr(),ts:1},{id:'e2',amount:60,desc:'Groceries',cat:'food',date:todayStr(),ts:2});
+    S.debts.push({id:'d1',dir:'out',who:'Sam',amount:50,date:todayStr(),due:todayStr(),note:'',affect:false,returns:[],ts:1});
+    S.accounts=[{id:'a1',type:'main',name:'Карта',emoji:'💳',start:1000,ts:1,exclude:false}];setLang('en')`);
+  const cyr=(t,where)=>{const left=t.replace(/Язык|Русский/g,'');const m=left.match(/[А-Яа-яЁё][А-Яа-яЁё ]*/);if(m)throw new Error(`${where}: русский текст «${m[0]}»`)};
+  eq(doc.documentElement.lang,'en','lang у страницы'); ok(txt($('nav.tabs')).includes('Overview')&&txt($('nav.tabs')).includes('Accounts'),'нижние вкладки не переведены');
+  for(const v of ['home','history','debts','tips','settings']){ev(`go('${v}')`);
+    if(v==='settings')W.document.querySelectorAll('details.sect').forEach(d=>d.open=true);
+    cyr(txt($('#v-'+v))+' '+txt($('#mTitle')),v)}
+  ev("go('home')"); ok(txt($('#v-home')).includes('You can still spend today')||txt($('#v-home')).includes('Short until payday'),'нет главной карточки по-английски');
+  ok(txt($('#v-home')).includes('$'),'суммы не в долларах');
+  ev("ui.histView='cal';go('history');render()"); cyr(txt($('#v-history')),'календарь'); ev("ui.histView='list'");
+  ev('openSheet()'); cyr(txt($('#sheet')),'новая трата'); eq($('#sTitle').textContent,'New expense','заголовок шторки'); ev('closeSheet()');
+  ev("openDebt(null,'out')"); cyr(txt($('#dsheet')),'долг'); ev('closeSheet()');
+  ev('openSplit()'); cyr(txt($('#ssheet')),'заплатил за всех'); ev('closeSheet()');
+  ev("openAcc(null,'goal')"); cyr(txt($('#asheet')),'цель'); ev('closeSheet()');
+  ok(ev('maybeRemind()'),'нет напоминания о долге'); cyr(txt($('#rsheet')),'напоминание'); ev('closeSheet();remindQ=null');
+  ev("openRecap(null,null,demoSlides())"); for(let i=0;i<7;i++){cyr(txt($('#recap')),'пример итогов, слайд '+(i+1));ev('recapNav(1)')}
+  ev("openRecap(null,null,newsSlides(CHANGELOG))"); for(let i=0;i<4;i++){cyr(txt($('#recap')),'что нового');ev('recapNav(1)')} ev('closeRecap()');
+  ok(ev('CHANGELOG.every(c=>c.en&&c.en.length===c.items.length)'),'не у всех версий в CHANGELOG есть английский текст');
+  ev('lockNow()'); ev("S.lock={pin:'x',salt:'y'};lockNow()"); cyr(txt($('#lock')),'экран блокировки'); ev('unlock()');
+  ev("toast(tr('Сохранено','Saved'))"); eq(txt($('#toast')),'Saved','toast');
+  eq(ev('fmtDs("2026-03-05")'),'March 5','дата'); eq(ev('days(1)')+' / '+ev('days(3)'),'1 day / 3 days','множественное число');
+  eq(ev('money(1234.4)'),'$1,234','формат денег'); eq(ev("parseAmount('1,250.50')"),1250.5,'ввод суммы с запятой-разделителем тысяч');
+  eq(ev("cn(cat('food'))"),'Groceries','название категории'); eq(ev("dn('Карта')"),'Card','стандартное имя счёта');
+  ev("S.lang='ru';setLang('ru');render()"); ok(txt($('nav.tabs')).includes('Обзор'),'обратно на русский не переключилось');
+}],
+['English: мастер первого запуска и переключатель языка в настройках', async()=>{
+  const {ev,$}=await app(375,812,{keep:true});
+  $('[data-wlang="en"]').click(); $('[data-act="wizNext"]').click(); eq(ev('S.lang'),'en','язык из мастера');
+  ok(txt($('#wizBody')).includes('What’s your currency?'),'шаг валюты не по-английски');
+  $('[data-wcur="GBP"]').click(); $('[data-act="wizNext"]').click();
+  for(let i=0;i<4;i++){const t=txt($('#wizBody'));const m=t.match(/[А-Яа-яЁё]+/);if(m)throw new Error(`шаг ${i+3}: «${m[0]}»`);
+    if(i===0){$('#wName').value='Kate'}
+    $('[data-act="wizNext"]').click()}
+  ok($('#wiz').hidden,'мастер не закрылся'); eq(ev('S.baseCur'),'GBP','валюта'); ok(txt($('nav.tabs')).includes('Overview'),'после мастера интерфейс не на английском');
+  ev("go('settings')"); $('[data-setlang="ru"]').click(); eq(ev('S.lang'),'ru','переключатель в настройках'); ok(txt($('#v-settings')).includes('Профиль, тема и вход'),'настройки не на русском');
+}],
+['English: авто-категории по английским словам', async()=>{
+  const {ev}=await app();
+  const T={food:['milk','bread','eggs','walmart','tesco','groceries','chicken breast','coffee beans','bananas'],
+  cafe:['coffee','starbucks','latte','cappuccino','lunch','pizza','burger king','uber eats','croissant','mcdonalds','sushi'],
+  transport:['uber','lyft','taxi','metro','bus ticket','train'],
+  auto:['gas station','petrol','fuel','car wash','parking','oil change'],
+  health:['pharmacy','cvs','walgreens','ibuprofen','dentist','vitamins','eye drops'],
+  beauty:['haircut','barber','shampoo','manicure','toothpaste'],
+  household:['laundry detergent','toilet paper','ikea','cleaning supplies'],
+  clothes:['jeans','sneakers','new shoes','hoodie','zara'],
+  tech:['iphone','headphones','phone charger','laptop','phone case'],
+  shop:['amazon','ebay','aliexpress'],
+  alco:['beer','wine','cigarettes','vodka'],
+  fun:['cinema','movie tickets','concert','steam','books','bowling'],
+  sport:['gym','yoga class','protein'],
+  edu:['online course','tuition','udemy'],
+  kids:['diapers','toys'],
+  pets:['cat food','vet','dog food'],
+  gifts:['gift for mom','flowers','birthday present'],
+  travel:['hotel','airbnb','flight to paris','car rental'],
+  taxes:['tax','property tax'],
+  transfers:['transfer to sam','venmo'],
+  rent:['rent','landlord'], mortgage:['mortgage'], loans:['loan payment','credit card'],
+  installments:['klarna','afterpay'], utilities:['electricity','water bill','gas bill'],
+  comm:['phone bill','internet','verizon'], subs:['netflix','spotify','youtube premium','chatgpt','icloud','amazon prime','apple music'],
+  insurance:['car insurance','insurance']};
+  const bad=[];let n=0;
+  for(const [c,l] of Object.entries(T))for(const w of l){n++;const g=ev(`dictGuess(norm(${JSON.stringify(w)}))`);if(g!==c)bad.push(`${w} → ${g} (ждал ${c})`)}
+  if(bad.length)throw new Error(`${bad.length} из ${n}: `+bad.join('; '));
+  eq(ev("guess('Coffee at Starbucks')"),'cafe','guess() по фразе'); eq(ev("guess('кофе')"),'cafe','русские слова тоже работают');
   return `${n} фраз`;
 }],
 ];
