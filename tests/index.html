@@ -444,6 +444,59 @@ const tests=[
   ok(W.document.documentElement.classList.contains('wiz-on'),'нет блокировки'); eq(W.getComputedStyle($('main')).display,'none','интерфейс виден под мастером');
   ev('closeWizard()'); ok(!W.document.documentElement.classList.contains('wiz-on'),'блокировка не снялась');
 }],
+['Темы «Неон» и «Y2K»: переключаются и запоминаются', async()=>{
+  const {ev,$,W}=await app(); ev("go('settings')");
+  $('[data-skin="neon"]').click(); eq(W.document.documentElement.dataset.skin,'neon','неон'); eq(W.getComputedStyle(W.document.body).backgroundColor,'rgb(7, 6, 13)','неон должен быть тёмным');
+  $('[data-skin="y2k"]').click(); eq(W.document.documentElement.dataset.skin,'y2k','y2k'); eq(ev('S.skin'),'y2k','не запомнилось');
+  $('[data-skin="calm"]').click(); eq(W.document.documentElement.dataset.skin,'calm','назад');
+}],
+['Уровни и опыт: за траты, новый уровень', async()=>{
+  const {ev,$}=await app(); baseState(ev);
+  for(let i=0;i<12;i++){ev('openSheet()');$('#fAmount').value='100';$('#fDesc').value='кофе';ev('saveForm()')}
+  eq(ev('G().xp'),50,'за трату 5 опыта, не больше 10 трат в день');
+  eq(ev('lvlInfo(0).n'),1,'уровень 1'); eq(ev('lvlInfo(100).n'),2,'уровень 2 со 100 опыта'); eq(ev('lvlInfo(250).n'),3,'уровень 3 с 250');
+  ok($('#gameCard'),'нет игровой карточки на главной'); ok(txt($('#gameCard')).includes('Уровень'),'нет уровня');
+}],
+['Серия дней в норме и «заморозка»', async()=>{
+  const {ev}=await app(); baseState(ev); const d=k=>ev(`ymd(new Date(Date.now()+(${k})*864e5))`);
+  ev(`G().lastDay='${d(-4)}';G().streak=0;G().used={'${d(-3)}':1,'${d(-2)}':1,'${d(-1)}':1};G().freezeWeek=''`);
+  ev(`S.expenses.push({id:'big',amount:dayNorm()*3,desc:'ресторан',cat:'cafe',date:'${d(-2)}',ts:1})`);
+  ev('evalDays()'); eq(ev('G().streak'),2,'перерасход должен спастись заморозкой, серия = 2 дня в норме'); ok(ev('G().freezeWeek'),'заморозка не потрачена');
+}],
+['Челленджи: 6 на выбор, 3 принятых, победа даёт опыт', async()=>{
+  const {ev,$}=await app(); const d=k=>ev(`ymd(new Date(Date.now()+(${k})*864e5))`);
+  baseState(ev,`for(let i=1;i<20;i++)S.expenses.push({id:'h'+i,amount:300,desc:i%2?'такси':'кофе',cat:i%2?'transport':'cafe',date:'${''}'+ymd(new Date(Date.now()-i*864e5)),ts:i})`);
+  const off=ev('chOffer()'); ok(off.length>=3&&off.length<=6,'предложено '+off.length); ok(off.includes('notaxi'),'нет челленджа про такси, хотя такси в истории есть');
+  ev('render()'); $('[data-act="chPick"]').click(); const btns=[...$('#chList').querySelectorAll('button')]; btns.slice(0,3).forEach(b=>b.click());
+  ok(!$('#chGo').disabled,'кнопка «принять» не активна'); $('#chGo').click(); eq(ev('G().active.length'),3,'не приняты');
+  ev(`G().active=[{id:'notaxi',em:'🚕',t:'x',xp:40,start:'${d(-2)}',end:'${d(-2)}'}]`); const xp0=ev('G().xp');
+  eq(ev('chSettle()'),1,'победа не засчитана'); eq(ev('G().xp'),xp0+40,'опыт за победу');
+  ev(`G().active=[{id:'notaxi',em:'🚕',t:'x',xp:40,start:'${d(0)}',end:'${d(1)}'}];S.expenses.push({id:'tx',amount:400,desc:'такси',cat:'transport',date:todayStr(),ts:9})`);
+  eq(ev("chEval(G().active[0]).state"),'fail','поездка на такси должна провалить челлендж');
+}],
+['Свинка: гладится, растёт от копилки', async()=>{
+  const {ev,$}=await app(); baseState(ev,`S.expenses.push({id:'p1',amount:100,desc:'кофе',cat:'cafe',date:todayStr(),ts:1})`);
+  ev('render()'); ok($('#pig'),'нет свинки'); const xp0=ev('G().xp'); $('#pig').click(); ok($('#pig').classList.contains('oink'),'не реагирует'); eq(ev('G().xp'),xp0+2,'опыт за поглаживание раз в день');
+  const s0=ev('pigState().scale'); ev(`S.accounts.push({id:'g',type:'goal',name:'К',emoji:'🐷',start:60000,ts:Date.now(),monthly:0,exclude:true})`); ok(ev('pigState().scale')>s0,'не растёт от копилки');
+}],
+['Крупная трата — «в шавермах», мелкая — нет', async()=>{
+  const {ev,$}=await app(); baseState(ev);
+  ev('openSheet()');$('#fAmount').value='3500';$('#fDesc').value='Наушники';ev('saveForm()'); ok(txt($('#toast')).includes('шаверм'),'нет сравнения для крупной');
+  ev('openSheet()');$('#fAmount').value='200';$('#fDesc').value='кофе';ev('saveForm()'); ok(!txt($('#toast')).includes('шаверм'),'сравнение у мелкой траты');
+}],
+['Хочу-лист: 48 часов, «передумал» — в сэкономленное', async()=>{
+  const {ev,$}=await app(); baseState(ev); ev("go('debts')");
+  $('[data-act="wishNew"]').click(); $('#wName').value='Кроссовки'; $('#wPrice').value='12000'; $('[data-act="wishSave"]').click();
+  eq(ev('G().wish.length'),1,'не добавилось'); eq(ev('maybeWish()'),false,'спросило раньше 48 часов');
+  ev('G().wish[0].ts=Date.now()-49*36e5'); eq(ev('maybeWish()'),true,'не спросило через 48 часов'); ok(txt($('#wqsheet')).includes('Кроссовки'),'нет названия');
+  $('[data-act="wqNo"]').click(); eq(ev('G().saved'),12000,'не засчитано как сэкономленное');
+}],
+['Настроение покупки: сохраняется и попадает в итоги', async()=>{
+  const {ev,$}=await app(); baseState(ev); const pk=ev('shiftMonth(mkey(new Date()),-1)');
+  ev('openSheet()');$('#fAmount').value='500';$('#fDesc').value='Книга';$('[data-mood="love"]').click();ev('saveForm()'); eq(ev('S.expenses.at(-1).mood'),'love','настроение не сохранилось');
+  ev(`for(let i=1;i<=6;i++)S.expenses.push({id:'m'+i,amount:100*i,desc:'покупка '+i,cat:'shop',date:'${pk}-0'+i,ts:i,mood:i%2?'love':'meh'})`);
+  const ks=ev(`recapSlides('${pk}').map(s=>s.k)`); ok(ks.includes('Лучшие покупки месяца')&&ks.includes('О чём пожалел'),'нет слайдов настроения: '+ks.join(', '));
+}],
 ['Внизу настроек: версия и подпись «Developed & released by dzts_w»', async()=>{
   const {ev,$}=await app(); ev("go('settings')");
   const t=txt($('#v-settings')); ok(t.includes('версия '+ev('APP_VERSION')),'нет версии'); ok(t.includes('Developed & released by dzts_w'),'нет подписи'); ok(!t.includes('Designed')&&!t.includes('☀️ by'),'осталась старая подпись');

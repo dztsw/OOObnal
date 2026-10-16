@@ -574,6 +574,80 @@ html[data-skin="official"] .hl .seen .ring{background:var(--base)}
 .wiz .curgrid{margin-top:14px}
 .wiz .curgrid .fl{margin:0;font-size:20px;font-weight:400;color:inherit} /* у флага в мастере — не стиль подписи .wiz .fl */
 .curgrid button{min-width:0}
+/* ===== тема «Неон»: всегда тёмная, светящиеся края ===== */
+html[data-skin="neon"]:not([data-theme="none"]){color-scheme:dark;
+  --bg:#07060d; --card:rgba(18,14,32,.86); --card-solid:#120e20; --ink:#f6f2ff; --ink2:#c2b8e6; --muted:#8c82b0;
+  --line:rgba(255,46,166,.18); --base:rgba(32,240,255,.3); --ring:rgba(255,46,166,.28);
+  --accent:#ff2ea6; --accent-strong:#ff7ad0; --accent-soft:rgba(255,46,166,.18); --on-accent:#fff;
+  --good:#39ff9e; --good-ink:#39ff9e; --warn:#ffe14d; --bad:#ff4d6d;
+  --hero:linear-gradient(135deg,#ff2ea6 0%,#8a2cff 50%,#20f0ff 100%); --hero-bad:linear-gradient(135deg,#ff4d6d,#8a2cff);
+  --b1:#ff2ea6; --b2:#20f0ff; --b3:#8a2cff; --b4:#ff2ea6; --blob-op:.22; --shadow:0 0 0 1px rgba(255,46,166,.25),0 0 22px rgba(255,46,166,.16);
+}
+html[data-skin="neon"] .sun{display:none}
+html[data-skin="neon"] .card{border-color:rgba(255,46,166,.35);box-shadow:0 0 0 1px rgba(32,240,255,.12),0 0 18px rgba(255,46,166,.18)}
+html[data-skin="neon"] .sunny{box-shadow:0 0 28px rgba(255,46,166,.55),0 0 60px rgba(32,240,255,.25)}
+html[data-skin="neon"] .btn.primary,html[data-skin="neon"] .chip.on{background:linear-gradient(135deg,#ff2ea6,#8a2cff);box-shadow:0 0 16px rgba(255,46,166,.6)}
+html[data-skin="neon"] .fab{background:linear-gradient(135deg,#ff2ea6,#20f0ff);box-shadow:0 0 22px rgba(255,46,166,.75),0 0 40px rgba(32,240,255,.35)}
+html[data-skin="neon"] .tab.on{color:#20f0ff;text-shadow:0 0 10px rgba(32,240,255,.8)}
+html[data-skin="neon"] .mbar h1,html[data-skin="neon"] .hero .total{text-shadow:0 0 14px rgba(255,46,166,.55)}
+html[data-skin="neon"] .crow .bar>i,html[data-skin="neon"] .vbar i{background:linear-gradient(90deg,#ff2ea6,#20f0ff);box-shadow:0 0 8px rgba(255,46,166,.6)}
+html[data-skin="neon"] #barg stop:first-child{stop-color:#ff2ea6} html[data-skin="neon"] #barg stop:last-child{stop-color:#20f0ff}
+html[data-skin="neon"] .hl .ring{background:conic-gradient(#ff2ea6,#20f0ff,#8a2cff,#ff2ea6)}
+/* ===== тема «Y2K»: хром, блёстки, сиреневый с голубым, «пузырчатые» кнопки ===== */
+html[data-skin="y2k"]:not([data-theme="none"]){color-scheme:light;
+  --bg:#eef0ff; --card:linear-gradient(145deg,#ffffff,#e7e9f8); --card-solid:#f7f7ff; --ink:#22183f; --ink2:#5e5486; --muted:#8f88b0;
+  --line:rgba(120,100,200,.18); --base:rgba(120,100,200,.3); --ring:rgba(150,140,220,.35);
+  --accent:#8a5cff; --accent-strong:#5b2ee0; --accent-soft:#e6dcff; --on-accent:#fff;
+  --hero:linear-gradient(135deg,#8c63ff 0%,#3fa9f5 50%,#f05fc8 100%); --hero-bad:linear-gradient(135deg,#ff9ac4,#b48cff);
+  --b1:#c9b6ff; --b2:#8fd8ff; --b3:#ffb6f0; --b4:#fff3a6; --blob-op:.6; --shadow:0 2px 0 rgba(255,255,255,.9) inset,0 8px 24px rgba(110,90,200,.18);
+}
+@media (prefers-color-scheme: dark){html[data-skin="y2k"]:not([data-theme="light"]){color-scheme:dark;
+  --bg:#120f2a; --card:linear-gradient(145deg,#2a2452,#1b1738); --card-solid:#211c44; --ink:#f1edff; --ink2:#c5bdf0; --muted:#8f88b0;
+  --line:rgba(200,190,255,.16); --base:rgba(200,190,255,.28); --ring:rgba(200,190,255,.22);
+  --accent:#b48cff; --accent-strong:#d6c2ff; --accent-soft:rgba(180,140,255,.22); --blob-op:.3;
+  --shadow:0 1px 0 rgba(255,255,255,.12) inset,0 8px 24px rgba(0,0,0,.35);
+}}
+html[data-skin="y2k"] .sun{display:none}
+html[data-skin="y2k"] body{background-image:radial-gradient(circle at 20% 30%,rgba(255,255,255,.9) 0 1.5px,transparent 2px),radial-gradient(circle at 75% 60%,rgba(255,255,255,.8) 0 1px,transparent 1.5px),radial-gradient(circle at 45% 85%,rgba(255,255,255,.7) 0 1.2px,transparent 2px);background-size:140px 140px,190px 190px,230px 230px}
+html[data-skin="y2k"] .card{border:1px solid rgba(255,255,255,.7);background:var(--card)}
+html[data-skin="y2k"] .btn,html[data-skin="y2k"] .chip{border-radius:999px}
+html[data-skin="y2k"] .btn.primary,html[data-skin="y2k"] .chip.on{background:linear-gradient(180deg,#c3a8ff,#8a5cff 60%,#6a3cf0);box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 6px 16px rgba(138,92,255,.4)}
+html[data-skin="y2k"] .fab{background:linear-gradient(160deg,#ffffff,#c9b6ff 30%,#8fd8ff 70%,#ffb6f0);color:#5b2ee0;box-shadow:0 2px 0 rgba(255,255,255,.9) inset,0 10px 26px rgba(138,92,255,.45);animation:none}
+html[data-skin="y2k"] .sunny::before{background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.55) 50%,transparent 70%)}
+html[data-skin="y2k"] .crow .bar>i,html[data-skin="y2k"] .vbar i{background:linear-gradient(90deg,#b48cff,#8fd8ff)}
+html[data-skin="y2k"] #barg stop:first-child{stop-color:#b48cff} html[data-skin="y2k"] #barg stop:last-child{stop-color:#8fd8ff}
+html[data-skin="y2k"] .hl .ring{background:conic-gradient(#c9b6ff,#8fd8ff,#ffb6f0,#fff3a6,#c9b6ff)}
+.skinsw{grid-template-columns:1fr 1fr}
+/* ===== игровая карточка: свинка, уровень, серия, челленджи ===== */
+.game{display:grid;grid-template-columns:86px 1fr;gap:12px;align-items:center}
+.pig{position:relative;width:86px;height:86px;display:grid;place-items:center;font-size:58px;line-height:1;cursor:pointer;user-select:none;-webkit-user-select:none}
+.pig .b{display:inline-block;transform-origin:50% 90%;transition:transform .4s}
+.pig.happy .b{animation:pighop 1.6s ease-in-out infinite}
+.pig.sad .b{filter:saturate(.6);animation:pigsad 3s ease-in-out infinite}
+.pig.oink .b{animation:oink .6s ease}
+.pig .mood{position:absolute;top:2px;right:4px;font-size:20px;animation:bob 2.4s ease-in-out infinite}
+.pig .pop{position:absolute;font-size:20px;pointer-events:none;animation:pigpop 1s ease forwards}
+@keyframes pighop{0%,100%{transform:translateY(0) scale(var(--s,1))}50%{transform:translateY(-6px) scale(var(--s,1))}}
+@keyframes pigsad{0%,100%{transform:rotate(-3deg) scale(var(--s,1))}50%{transform:rotate(3deg) scale(var(--s,1))}}
+@keyframes oink{30%{transform:scale(calc(var(--s,1)*1.25)) rotate(-8deg)}60%{transform:scale(calc(var(--s,1)*.92)) rotate(6deg)}}
+@keyframes pigpop{from{opacity:1;transform:translate(0,0)}to{opacity:0;transform:translate(var(--dx,0),-50px) scale(1.4)}}
+.lvl{font-size:13px;color:var(--ink2)} .lvl b{font-size:16px;color:var(--ink)}
+.xpbar{height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin:6px 0 6px}
+.xpbar>i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#ffd200,#ff8a00);transform-origin:left;animation:grow .9s cubic-bezier(.2,.8,.2,1) both}
+.streak{display:flex;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--ink2)} .streak b{color:var(--ink)}
+.chl{margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+.chrow{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:14px}
+.chrow .ce{font-size:20px;width:28px;text-align:center}.chrow .ct{flex:1;min-width:0}.chrow .cs{font-size:12px;color:var(--muted)}
+.chrow .cx{font-size:12px;font-weight:700;color:#e08a00;white-space:nowrap}
+.chpick{display:grid;gap:8px}
+.chpick button{display:flex;gap:10px;align-items:center;text-align:left;padding:12px;border-radius:16px;border:2px solid var(--ring);background:var(--card-solid)}
+.chpick button.on{border-color:var(--accent);background:var(--accent-soft)}
+.chpick .ce{font-size:24px}.chpick .ct{flex:1}.chpick .cx{font-size:12px;font-weight:700;color:#e08a00}
+.moods{display:flex;gap:8px;margin:0 0 12px}
+.moods button{flex:1;padding:8px;border-radius:14px;border:1px solid var(--ring);background:var(--bg);font-size:22px;transition:transform .12s}
+.moods button.on{border-color:var(--accent);background:var(--accent-soft);transform:scale(1.06)}
+.moods .ml{display:block;font-size:11px;color:var(--muted)}
+.wish .tm{font-size:12px;color:var(--muted)}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
@@ -626,6 +700,7 @@ html[data-skin="official"] .hl .seen .ring{background:var(--base)}
   <button class="btn ghost" id="catToggle" style="margin-top:2px">Выбрать категорию вручную ▾</button>
   <div class="chips" id="fCats" hidden></div>
   <div class="chips" id="fAccs" hidden style="margin-top:-4px"></div>
+  <div class="moods" id="fMoods"><button data-mood="love">😍<span class="ml" data-ml="love"></span></button><button data-mood="ok">😐<span class="ml" data-ml="ok"></span></button><button data-mood="meh">😬<span class="ml" data-ml="meh"></span></button></div>
   <div class="row2" style="margin-bottom:14px">
     <input class="inp" id="fDate" type="date">
     <button class="btn" id="fToday" data-en="Today">Сегодня</button>
@@ -771,6 +846,28 @@ html[data-skin="official"] .hl .seen .ring{background:var(--base)}
     <button class="btn primary block" data-act="paySave" data-en="Recalculate">Пересчитать</button>
   </div>
 </div>
+<!-- шторка: выбор челленджей -->
+<div class="sheet" id="chsheet" role="dialog" aria-modal="true">
+  <div class="grab"></div>
+  <div class="sheet-h"><h3 id="chT">🎯 Челленджи на 2 дня</h3><button class="btn sm" data-close>×</button></div>
+  <div class="small sec" style="margin:-4px 0 10px" id="chS"></div>
+  <div class="chpick" id="chList"></div>
+  <button class="btn primary block" id="chGo" style="margin-top:12px" disabled></button>
+</div>
+<!-- шторка: новое желание -->
+<div class="sheet" id="wsheet2" role="dialog" aria-modal="true">
+  <div class="grab"></div>
+  <div class="sheet-h"><h3 id="wnT">🛒 Новое желание</h3><button class="btn sm" data-close>×</button></div>
+  <input class="inp" id="wName" placeholder="" autocomplete="off" style="margin-bottom:10px">
+  <div class="amount-wrap"><input class="amount-in num" id="wPrice" inputmode="decimal" placeholder="0" autocomplete="off"></div>
+  <button class="btn primary block" data-act="wishSave" id="wSave"></button>
+</div>
+<!-- шторка: «всё ещё хочешь?» -->
+<div class="sheet" id="wqsheet" role="dialog" aria-modal="true">
+  <div class="grab"></div>
+  <div style="text-align:center;padding:4px 4px 10px"><div style="font-size:46px">🛍️</div><h3 style="margin:4px 0 6px;font-size:20px" id="wqT"></h3><div class="sec" id="wqS"></div></div>
+  <div class="btns"><button class="btn primary block" data-act="wqBuy" id="wqBuy"></button><button class="btn block" data-act="wqNo" id="wqNo"></button><button class="btn block" data-act="wqLater" id="wqLater"></button></div>
+</div>
 <!-- шторка: что нового -->
 <div class="sheet" id="wsheet" role="dialog" aria-modal="true">
   <div class="grab"></div>
@@ -809,7 +906,7 @@ const DAY=864e5;
 const DEBT_CATS=new Set(['loans','mortgage','installments']);
 // английская база из categories.js; если браузер подсунул старый файл без неё — просто работаем без английских слов
 const KW_EN=typeof EN_KW!=='undefined'?EN_KW:{}, NAMES_EN=typeof CAT_EN!=='undefined'?CAT_EN:{};
-const APP_VERSION='1.12.0';
+const APP_VERSION='1.13.0';
 const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------- утилиты ---------- */
@@ -1160,10 +1257,12 @@ async function scanFromImage(src){
   $('#scanMsg').textContent=tr('Не нашёл QR-код на фото — сними поближе и ровнее','No QR code found in the photo — take it closer and straighter'); return false;
 }
 /* ---------- тема ---------- */
+const SKINS=['calm','official','neon','y2k'];
 function applySkin(){
-  const off=S?.skin==='official'; document.documentElement.dataset.skin=off?'official':'calm';
+  const sk=SKINS.includes(S?.skin)?S.skin:'calm'; document.documentElement.dataset.skin=sk;
   const dark=matchMedia('(prefers-color-scheme: dark)').matches;
-  document.querySelectorAll('meta[name="theme-color"]').forEach(m=>m.content=off?(dark?'#0e1621':'#f2f5f9'):(m.media.includes('dark')?'#1c1222':'#fff4e6'));
+  const col={calm:dark?'#1c1222':'#fff4e6',official:dark?'#0e1621':'#f2f5f9',neon:'#07060d',y2k:dark?'#120f2a':'#eef0ff'}[sk];
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m=>m.content=col);
 }
 /* ---------- установка на Android ---------- */
 let installPrompt=null;
@@ -1253,11 +1352,14 @@ function pinVerifyThen(fn){
 // Android — вибрация; iPhone (iOS 18+) — скрытый переключатель «switch» даёт системный тик.
 function haptic(kind='light'){
   try{
-    if(navigator.vibrate){navigator.vibrate(kind==='success'?[10,50,16]:kind==='warn'?[20,40,20]:8);return}
+    const PAT={success:[10,50,16],warn:[20,40,20],level:[15,40,15,40,40],win:[20,60,30],pet:[6,30,6]};
+    if(navigator.vibrate){navigator.vibrate(PAT[kind]||8);return}
     // клик по скрытому переключателю уводит фокус — при открытой клавиатуре это закрыло бы её
     const ae=document.activeElement;
     if(ae&&(ae.tagName==='TEXTAREA'||ae.tagName==='SELECT'||(ae.tagName==='INPUT'&&ae.type!=='checkbox')))return;
-    const l=$('#hapticL'); l.click(); if(kind!=='light')setTimeout(()=>l.click(),110);
+    // на iPhone — серия тиков: уровень — три, победа и поглаживание — по два, остальное — как раньше
+    const l=$('#hapticL'), n={level:3,win:2,pet:2}[kind]||(kind!=='light'?2:1);
+    for(let i=0;i<n;i++)setTimeout(()=>l.click(),i*(kind==='pet'?70:110));
   }catch(e){}
 }
 // Персональный сюрприз. Фраза зашифрована, ключ получается из имени, поэтому в открытом коде
@@ -1981,6 +2083,7 @@ function renderHome(){
     ${cur&&!S.accounts.length?balanceCard():''}
     ${backupDue()?`<div class="card banner"><span class="small">${tr('💾 Прошла неделя — сохрани резервную копию','💾 A week has passed — save a backup')}</span><span style="display:flex;gap:6px"><button class="btn" data-act="snooze">${tr('Позже','Later')}</button><button class="btn" data-act="backup">${tr('Сохранить','Save')}</button></span></div>`:''}
     ${cur?payCard():''}
+    ${cur&&S.expenses.length?gameCard():''}
     ${cur&&S.accounts.length?balanceCard():''}
     ${cur?plannedCard():''}
     ${cur?debtsMiniCard():''}
@@ -2085,7 +2188,7 @@ function renderHistory(){
         ?`<button class="item" ${e.debtId?`data-debt="${e.debtId}"`:`data-inc="${e.id}"`}><span class="em">💰</span><span class="tx"><div class="d1">${esc(e.desc||tr('Доход','Income'))}</div><div class="d2">${e.debtId?tr('Долг','Debt'):tr('Доход','Income')}${accTag(e)}</div></span><span class="am inc num">+${money(e.amount)}</span></button>`
         :`<button class="item" ${e.debtId?`data-debt="${e.debtId}"`:`data-id="${e.id}"`}><span class="em">${e.debtId?'🤝':cat(e.cat).emoji}</span>
         <span class="tx"><div class="d1">${esc(e.desc||cn(cat(e.cat)))}</div><div class="d2">${e.debtId?tr('Долг','Debt'):esc(cn(cat(e.cat)))}${e.plannedId?tr(' · обязательный',' · fixed'):''}${accTag(e)}</div></span>
-        <span class="am num">${money(e.amount)}${e.cur?`<div class="small muted">${fmtCur(e.camt,e.cur)}</div>`:''}</span></button>`).join('')}).join('')}</div>`
+        <span class="am num">${e.mood?{love:'😍 ',ok:'😐 ',meh:'😬 '}[e.mood]:''}${money(e.amount)}${e.cur?`<div class="small muted">${fmtCur(e.camt,e.cur)}</div>`:''}</span></button>`).join('')}).join('')}</div>`
       :cal?(ui.calDay?`<div class="empty" style="padding:16px">${tr('В этот день трат нет','No expenses on this day')}</div>`:''):`<div class="empty"><div class="big">🧾</div>${q||ui.catFilter?tr('Ничего не найдено','Nothing found'):tr('В этом месяце записей нет','No records this month')}</div>`}
   `;
   if(has){const s=$('#search');s.focus();s.setSelectionRange(s.value.length,s.value.length)}
@@ -2134,7 +2237,7 @@ function renderDebts(){
         <span class="am num">${gi.m?money(gi.m)+`<div class="small muted">${tr('в месяц','a month')}</div>`:''}<button class="pay-btn" data-topup="${g.id}">${tr('Пополнить','Top up')}</button></span></div>`}).join('')}`
     :`<p class="small sec" style="margin:0 0 10px">${tr('Копишь на море или новый телефон? Создай цель: сколько уже есть, сколько нужно и к какому сроку — посчитаю, сколько откладывать в месяц. Эта сумма сразу учтётся в дневном лимите.','Saving for a trip or a new phone? Create a goal: how much you have, how much you need and by when — I’ll work out how much to set aside each month. It’s included in the daily limit right away.')}</p>
       <button class="btn primary block" data-newacc="goal">${tr('+ Создать цель','+ Create goal')}</button>`}</div>`;
-  $('#v-debts').innerHTML=`${accCard}${goalCard}
+  $('#v-debts').innerHTML=`${accCard}${goalCard}${wishCard()}
     <div class="card"><div class="stat3">
       <div><div class="k">${tr('Кредиты осталось','Loans left')}</div><div class="v num">${money(loanLeft)}</div></div>
       <div><div class="k">${tr('Мне должны','Owed to me')}</div><div class="v num" style="color:var(--good-ink)">${money(owedToMe)}</div></div>
@@ -2284,10 +2387,12 @@ function renderSettings(){
         <div class="small late">${tr('⚠️ Уже записанные суммы не пересчитываются — меняется только значок валюты. Меняй, если с самого начала выбрал не ту.','⚠️ Amounts you’ve already recorded are not converted — only the currency sign changes. Switch it if you picked the wrong one at the start.')}</div></div>
       <div class="lockbox"><b>${tr('🎨 Тема','🎨 Theme')}</b>
         <div class="skinsw">
-          <button data-skin="calm" class="${S.skin!=='official'?'on':''}"><span class="sw2"><i style="background:#ffb03a"></i><i style="background:#ff6a4d"></i><i style="background:#ff4f8b"></i></span>${tr('Спокойная','Calm')}<small>${tr('тёплая, солнечная','warm, sunny')}</small></button>
+          <button data-skin="calm" class="${!['official','neon','y2k'].includes(S.skin)?'on':''}"><span class="sw2"><i style="background:#ffb03a"></i><i style="background:#ff6a4d"></i><i style="background:#ff4f8b"></i></span>${tr('Спокойная','Calm')}<small>${tr('тёплая, солнечная','warm, sunny')}</small></button>
           <button data-skin="official" class="${S.skin==='official'?'on':''}"><span class="sw2"><i style="background:#0d4cd3"></i><i style="background:#fff;border:1px solid #c8d2de"></i><i style="background:#ee3f58"></i></span>${tr('Официальная','Official')}<small>${tr('строгая, сине-белая','strict, blue and white')}</small></button>
+          <button data-skin="neon" class="${S.skin==='neon'?'on':''}"><span class="sw2"><i style="background:#07060d;box-shadow:0 0 6px #ff2ea6"></i><i style="background:#ff2ea6"></i><i style="background:#20f0ff"></i></span>${tr('Неон','Neon')}<small>${tr('тёмная, светится','dark and glowing')}</small></button>
+          <button data-skin="y2k" class="${S.skin==='y2k'?'on':''}"><span class="sw2"><i style="background:linear-gradient(135deg,#fff,#c9b6ff)"></i><i style="background:#8fd8ff"></i><i style="background:#ffb6f0"></i></span>Y2K<small>${tr('хром и блёстки','chrome and sparkles')}</small></button>
         </div>
-        <div class="small sec" style="margin-top:8px">${tr('🌗 Обе темы подстраиваются под тему телефона: если на телефоне светлое оформление — будет светлая, если тёмное — тёмная. Переключается в «Настройки → Экран и яркость» на iPhone или «Экран → Тёмная тема» на Android.','🌗 Both themes follow your phone’s appearance: light when the phone is light, dark when it’s dark. Switch it in “Settings → Display & Brightness” on iPhone or “Display → Dark theme” on Android.')}</div></div>
+        <div class="small sec" style="margin-top:8px">${tr('🌗 «Неон» всегда тёмный. Остальные темы подстраиваются под тему телефона: если на телефоне светлое оформление — будет светлая, если тёмное — тёмная. Переключается в «Настройки → Экран и яркость» на iPhone или «Экран → Тёмная тема» на Android.','🌗 Both themes follow your phone’s appearance: light when the phone is light, dark when it’s dark. Switch it in “Settings → Display & Brightness” on iPhone or “Display → Dark theme” on Android.')}</div></div>
       <div class="lockbox">
         <div><b>${tr('🔒 Вход по коду','🔒 Code lock')}</b> <span class="small muted">${lockOn?tr('включён','on'):tr('выключен','off')}</span></div>
         <div class="small sec">${EN?`The app will open only after you enter the code${ui.faceAvail?' or use Face ID':''}. The code protects from prying eyes; your data still stays only on the phone.`:`Приложение будет открываться только после ввода кода${ui.faceAvail?' или по Face ID':''}. Код защищает от чужих глаз; данные по-прежнему хранятся только в телефоне.`}</div>
@@ -2371,7 +2476,7 @@ function openSheet(id,type='exp'){
   $('#fDate').value=e?e.date:(isCurMonth(ui.month)?todayStr():`${ui.month}-01`);
   ui.fCat=e&&type==='exp'?e.cat:null; ui.fManual=!!e; ui.fGuess=e&&type==='exp'?guess(e.desc):null;
   $('#fDel').hidden=!e; $('#fType').hidden=!!e;
-  ui.catsShown=false; ui.fQr=null; ui.fAcc=e?.acc||mainAcc()?.id||spendAccs()[0]?.id||null; applyType(); renderAccChips();
+  ui.catsShown=false; ui.fQr=null; ui.fMood=e?.mood||null; renderMoods(); ui.fAcc=e?.acc||mainAcc()?.id||spendAccs()[0]?.id||null; applyType(); renderAccChips();
   openPanel('#sheet');
   setTimeout(()=>$('#fAmount').focus(),e?0:300);
 }
@@ -2382,7 +2487,7 @@ function applyType(){
   $('#fDesc').placeholder=inc?tr('Откуда? Премия, подработка, кэшбэк…','From where? Bonus, side job, cashback…'):tr('На что? Булочка, такси, капли в нос…','What for? Coffee, taxi, groceries…');
   if(!ui.editId)$('#sTitle').textContent=inc?tr('Новый доход','New income'):tr('Новая трата','New expense');
   renderAccChips();
-  $('#fGuess').hidden=inc; $('#catToggle').hidden=inc; $('#qrBtn').hidden=!!ui.editId; $('#fCats').hidden=inc||!ui.catsShown;
+  $('#fGuess').hidden=inc; $('#catToggle').hidden=inc; if($('#fMoods'))$('#fMoods').hidden=inc; $('#qrBtn').hidden=!!ui.editId; $('#fCats').hidden=inc||!ui.catsShown;
   renderChips();
 }
 let lastChip=null;
@@ -2419,6 +2524,8 @@ function saveForm(){
     if(e.cat!==c){delete e.plannedId;delete e.forDue}
     delete e.cur;delete e.camt;delete e.rate;Object.assign(e,{amount,desc,date,cat:c,...fx.extra});delete e.demo}
   else{e={id:uid(),amount,desc,date,cat:c,ts:Date.now(),...(ui.fQr?{qr:ui.fQr}:{}),...fx.extra};S.expenses.push(e)}
+  if(ui.fMood)e.mood=ui.fMood; else delete e.mood;
+  const gotXP=ui.editId?0:xpForExpense();
   if(spendAccs().length>1)e.acc=ui.fAcc; else delete e.acc;
   autoLink(e);
   save(); closeSheet();
@@ -2427,7 +2534,8 @@ function saveForm(){
   const P=period();
   const lim=+(S.catLimits?.[c])||0, spC=lim?catSpentNow(c):0;
   if(lim&&spC>lim)haptic('warn');
-  toast(ui.editId?tr('Сохранено','Saved'):`${cat(c).emoji} ${cn(cat(c))}: ${money(amount)}`+(lim?` · ${money(spC)} ${tr('из','of')} ${money(lim)}${spC>lim?' ⚠️':''}`:P&&!isFixed(c)&&date===todayStr()?tr(` · сегодня осталось ${money(Math.max(0,P.todayLeft))}`,` · ${money(Math.max(0,P.todayLeft))} left today`):''));
+  const big=!ui.editId&&amount>=rk(3000)?' · '+inShawarma(amount):'';
+  toast(ui.editId?tr('Сохранено','Saved'):`${cat(c).emoji} ${cn(cat(c))}: ${money(amount)}${big}`+(lim?` · ${money(spC)} ${tr('из','of')} ${money(lim)}${spC>lim?' ⚠️':''}`:P&&!isFixed(c)&&date===todayStr()?tr(` · сегодня осталось ${money(Math.max(0,P.todayLeft))}`,` · ${money(Math.max(0,P.todayLeft))} left today`):''));
   if(persisted===null)askPersist();
 }
 
@@ -2614,6 +2722,7 @@ function saveTransfer(){
   S.transfers.push({id:uid(),from,to,amount,date:todayStr(),ts:Date.now()});
   save(); closeSheet(); render(); haptic('success');
   const g=S.accounts.find(a=>a.id===to);
+  if(g?.type==='goal'){const x=xpForSave();if(ui.view==='home')setTimeout(petPig,300)}
   if(g?.type==='goal'&&goalInfo(g).done){confettiAt($('#fab'));toast(tr(`🎉 Цель «${g.name}» достигнута!`,`🎉 Goal “${dn(g.name)}” reached!`))}
   else toast(tr(`⇄ Переведено ${money(amount)}`,`⇄ Transferred ${money(amount)}`));
 }
@@ -2733,6 +2842,9 @@ function recapSlides(k){
   const m=+S.saveMonthly||0;
   out.push(m?{em:'🐷',k:tr('Отложено в копилку','Put into savings'),big:money(m),t:tr('Будущий ты говорит спасибо','Future you says thanks'),meme:tr('Копилка довольно хрюкнула 🐽','The piggy bank oinked happily 🐽')}
     :{em:'🐷',k:tr('Копилка','Savings'),big:money(0),t:tr('В этом месяце без накоплений','No savings this month'),meme:tr('Может, хотя бы 10% в следующем? ⚙️ → Накопления','Maybe at least 10% next month? ⚙️ → Savings')});
+  const loves=exps.filter(e=>e.mood==='love').sort((a,b)=>b.amount-a.amount), mehs=exps.filter(e=>e.mood==='meh');
+  if(loves.length)out.push({em:'😍',k:tr('Лучшие покупки месяца','Best buys of the month'),big:esc(loves[0].desc||cn(cat(loves[0].cat))),t:loves.slice(0,3).map(e=>`${esc(e.desc||cn(cat(e.cat)))} — ${money(e.amount)}`).join('<br>'),meme:tr('Вот на это денег не жалко 💖','Worth every penny 💖')});
+  if(mehs.length)out.push({em:'😬',k:tr('О чём пожалел','Regrets'),big:money(sum(mehs)),t:mehs.slice(0,3).map(e=>`${esc(e.desc||cn(cat(e.cat)))} — ${money(e.amount)}`).join('<br>'),meme:tr('Бывает. Зато теперь знаешь 🤝','Happens. Now you know 🤝')});
   out.push({em:'✨',k:tr('Новый месяц','New month'),big:tr('Погнали!','Let’s go!'),t:tr(`В среднем ${money(total/exps.length)} за покупку, ${nExp(exps.length)}`,`On average ${money(total/exps.length)} per purchase, ${nExp(exps.length)}`),meme:tr('Новый месяц — новые возможности потратить 😏','New month — new ways to spend 😏'),last:true});
   return out;
 }
@@ -2827,9 +2939,177 @@ function payAnswer(status,amount){
   else {haptic();toast(tr('Хорошо, пока считаю без этой выплаты. Спрошу завтра','OK, I’ll count without this paycheck for now. I’ll ask tomorrow'))}
   if(done)setTimeout(done,350);
 }
+/* ---------- настроение покупки ---------- */
+function renderMoods(){
+  const L={love:tr('кайф','love it'),ok:tr('норм','okay'),meh:tr('зря','regret')};
+  document.querySelectorAll('#fMoods [data-ml]').forEach(x=>x.textContent=L[x.dataset.ml]);
+  document.querySelectorAll('#fMoods [data-mood]').forEach(b=>b.classList.toggle('on',b.dataset.mood===ui.fMood));
+  $('#fMoods').hidden=ui.fType==='inc';
+}
+/* ---------- «в шавермах» — для крупных трат, нейтрально ---------- */
+function inShawarma(a){
+  const U=[[350,['шавермы','шаверм','шаверм'],'shawarmas'],[250,['капучино','капучино','капучино'],'cappuccinos'],[450,['бизнес-ланча','бизнес-ланча','бизнес-ланчей'],'business lunches'],[500,['похода в кино','похода в кино','походов в кино'],'movie tickets']];
+  const pick=[U[0],U[1+Math.floor(Math.random()*3)]];
+  return pick.map(([pr,ru,en])=>{const n=Math.floor(a/rk(pr));return EN?`${n} ${en}`:`${n} ${plural(n,ru)}`}).join(tr(' или ',' or '));
+}
+/* ---------- игра: опыт, уровни, серии ---------- */
+const LEVELS=[['Новичок','Rookie'],['Учусь считать','Learning to count'],['Экономист','Economist'],['Хозяин бюджета','Budget boss'],
+  ['Финансовый ниндзя','Finance ninja'],['Мастер копилки','Piggy master'],['Гуру бюджета','Budget guru'],['Легенда экономии','Saving legend'],['Финансовый бог','Money god']];
+const lvlNeed=n=>100+50*(n-1); // сколько опыта нужно с уровня n на n+1
+function lvlInfo(xp){let n=1,base=0;while(xp>=base+lvlNeed(n)){base+=lvlNeed(n);n++}
+  const L=LEVELS[Math.min(n,LEVELS.length)-1];return {n,name:tr(L[0],L[1]),cur:xp-base,need:lvlNeed(n)}}
+function G(){S.game||={xp:0,streak:0,best:0,lastDay:'',freezeWeek:'',active:[],wish:[],saved:0};S.game.active||=[];S.game.wish||=[];return S.game}
+const isoWeek=d=>{const t=new Date(d);t.setHours(0,0,0,0);t.setDate(t.getDate()+3-(t.getDay()+6)%7);const w1=new Date(t.getFullYear(),0,4);
+  return t.getFullYear()+'-'+Math.round(((t-w1)/DAY-3+(w1.getDay()+6)%7)/7+1)};
+function addXP(n,why){
+  const g=G(), before=lvlInfo(g.xp).n; g.xp+=n; save();
+  const now=lvlInfo(g.xp);
+  if(now.n>before){haptic('level');confettiAt($('#pig')||$('#fab'));toast(tr(`🎉 Новый уровень ${now.n}: ${now.name}!`,`🎉 Level ${now.n}: ${now.name}!`));if(ui.view==='home')keepScroll(renderHome)}
+  else if(why)toast(why);
+}
+// за запись траты — 5 опыта, но не больше 10 трат в день
+function levelCheck(before,delay=0){const L=lvlInfo(G().xp);if(L.n>before)setTimeout(()=>{haptic('level');confettiAt($('#pig')||$('#fab'));toast(tr(`🎉 Новый уровень ${L.n}: ${L.name}!`,`🎉 Level ${L.n}: ${L.name}!`));if(ui.view==='home')keepScroll(renderHome)},delay)}
+function xpForExpense(){const g=G(),T=todayStr();if(g.xpDay!==T){g.xpDay=T;g.xpCnt=0}if(g.xpCnt>=10)return 0;const b=lvlInfo(g.xp).n;g.xpCnt++;g.xp+=5;levelCheck(b,1500);return 5}
+// серия: каждый прошедший день, когда приложением пользовались и уложились в дневную норму
+function evalDays(){
+  const g=G(), T=todayStr(), norm=dayNorm(), lb=lvlInfo(g.xp).n; g.used||={}; g.used[T]=1;
+  if(!g.lastDay){g.lastDay=T;save();return}
+  let d=parseD(g.lastDay); let gained=0;
+  while(true){d=new Date(d.getFullYear(),d.getMonth(),d.getDate()+1);const ds=ymd(d);if(ds>=T)break;
+    const ok=g.used[ds]&&(!norm||varOnDay(ds)<=norm);
+    if(ok){g.streak++;g.xp+=20;gained+=20}
+    else if(g.streak>0&&g.freezeWeek!==isoWeek(d)){g.freezeWeek=isoWeek(d);g.froze=ds} // раз в неделю «заморозка» спасает серию
+    else g.streak=0;
+    g.best=Math.max(g.best||0,g.streak)}
+  g.lastDay=T; for(const k of Object.keys(g.used))if(k<ymd(new Date(Date.now()-40*DAY)))delete g.used[k];
+  save(); if(gained)levelCheck(lb,1200); return gained;
+}
+/* ---------- челленджи на 2 дня ---------- */
+const kwRe=(...w)=>new RegExp(w.join('|'),'i');
+const DELIV=kwRe('доставк','яндекс еда','delivery','самокат','лавка','купер','kuper','деливери','vkusvill','вкусвилл доставка');
+const TAXI=kwRe('такси','яндекс го','yandex go','uber','убер','ситимобил','maxim','indrive','taxi');
+const COFFEE=kwRe('кофе','капуч','латте','раф','американо','эспрессо','coffee','latte','cappuccino');
+function chTemplates(){
+  const since=ymd(new Date(Date.now()-30*DAY)), H=S.expenses.filter(e=>!e.debtId&&e.date>=since), has=f=>H.some(f);
+  const cafeAvg=sum(H.filter(e=>e.cat==='cafe'))/30, norm=dayNorm();
+  return [
+    {id:'nodeliv',em:'🛵',t:tr('2 дня без доставки','2 days without delivery'),xp:40,rel:has(e=>DELIV.test(e.desc)),fail:e=>DELIV.test(e.desc)},
+    {id:'notaxi',em:'🚕',t:tr('Ни одного такси','No taxis at all'),xp:40,rel:has(e=>TAXI.test(e.desc)),fail:e=>TAXI.test(e.desc)},
+    {id:'coffee',em:'☕',t:tr(`На кофе не больше ${money(rk(300))} в день`,`Coffee: no more than ${money(rk(300))} a day`),xp:30,rel:has(e=>COFFEE.test(e.desc)),cap:{test:e=>COFFEE.test(e.desc),perDay:rk(300)}},
+    {id:'cafe',em:'🥐',t:tr(`Кафе и перекусы — не больше ${money(nice(Math.max(rk(300),cafeAvg*2*.6)))} за 2 дня`,`Cafes and snacks: under ${money(nice(Math.max(rk(300),cafeAvg*2*.6)))} for 2 days`),xp:40,rel:cafeAvg>0,cap:{test:e=>e.cat==='cafe',total:nice(Math.max(rk(300),cafeAvg*2*.6))}},
+    {id:'nolimit',em:'🎯',t:tr('Уложись в дневную норму оба дня','Stay within your daily norm both days'),xp:50,rel:norm>0,norm:true},
+    {id:'logall',em:'✍️',t:tr('Записывай траты оба дня','Log expenses on both days'),xp:30,rel:true,log:true},
+    {id:'noshop',em:'📦',t:tr('2 дня без маркетплейсов','2 days without marketplaces'),xp:40,rel:has(e=>e.cat==='shop'),fail:e=>e.cat==='shop'},
+    {id:'noalco',em:'🍷',t:tr('2 дня без алкоголя и сигарет','2 days without alcohol and cigarettes'),xp:40,rel:has(e=>e.cat==='alco'),fail:e=>e.cat==='alco'},
+    {id:'less',em:'📉',t:tr('Потрать на повседневное меньше, чем за прошлые 2 дня','Spend less on everyday things than in the previous 2 days'),xp:50,rel:true,less:true},
+    {id:'save',em:'🐷',t:tr('Положи что-нибудь в копилку','Put something into savings'),xp:40,rel:goals().length>0,save:true},
+  ].filter(c=>c.rel);
+}
+function chOffer(){ // раз в 2 дня — 6 случайных на выбор
+  const g=G(), T=todayStr();
+  if(g.active.some(c=>c.end>=T))return null;
+  if(g.offerDay&&daysUntil(g.offerDay)>-2&&g.offer)return g.offer;
+  const all=chTemplates().sort(()=>Math.random()-.5).slice(0,6).map(c=>c.id);
+  g.offerDay=T; g.offer=all; save(); return all;
+}
+function chEval(c){ // результат по тратам за 2 дня: {state:'win'|'fail'|'run', note}
+  const tpl=chTemplates().find(x=>x.id===c.id)||{}, T=todayStr(), over=T>c.end;
+  const ex=S.expenses.filter(e=>!e.debtId&&e.date>=c.start&&e.date<=c.end), dd=[c.start,c.end];
+  if(c.id==='nodeliv'||c.id==='notaxi'||c.id==='noshop'||c.id==='noalco'){const f=ex.filter(e=>tpl.fail?tpl.fail(e):false);
+    return f.length?{state:'fail',note:tr('не получилось','failed')}:over?{state:'win'}:{state:'run',note:tr('держишься 💪','holding on 💪')}}
+  if(c.id==='coffee'){const bad=dd.some(d=>sum(ex.filter(e=>e.date===d&&COFFEE.test(e.desc)))>rk(300));
+    return bad?{state:'fail',note:tr('перебор','over the cap')}:over?{state:'win'}:{state:'run',note:`${money(sum(ex.filter(e=>e.date===T&&COFFEE.test(e.desc))))} / ${money(rk(300))}`}}
+  if(c.id==='cafe'){const sp=sum(ex.filter(e=>e.cat==='cafe'));return sp>c.cap?{state:'fail',note:`${money(sp)} / ${money(c.cap)}`}:over?{state:'win'}:{state:'run',note:`${money(sp)} / ${money(c.cap)}`}}
+  if(c.id==='nolimit'){const n=dayNorm(),bad=dd.filter(d=>d<=T).some(d=>varOnDay(d)>n);return bad?{state:'fail',note:tr('вышел за норму','went over the norm')}:over?{state:'win'}:{state:'run',note:`${money(varOnDay(T))} / ${money(n)}`}}
+  if(c.id==='logall'){const ok=dd.filter(d=>d<T).every(d=>S.expenses.some(e=>e.date===d));
+    return !ok?{state:'fail',note:tr('пропущен день','a day was missed')}:over?{state:'win'}:{state:'run',note:S.expenses.some(e=>e.date===T)?tr('сегодня записано ✅','logged today ✅'):tr('запиши сегодня','log something today')}}
+  if(c.id==='less'){const now=sum(ex.filter(e=>!isFixed(e.cat)));return over?(now<c.base?{state:'win'}:{state:'fail',note:`${money(now)} / ${money(c.base)}`}):{state:'run',note:`${money(now)} / ${money(c.base)}`}}
+  if(c.id==='save'){const ok=S.transfers.some(x=>x.date>=c.start&&x.date<=c.end&&goals().some(g=>g.id===x.to));return ok?{state:'win'}:over?{state:'fail'}:{state:'run',note:tr('переведи в цель во вкладке «Счета»','transfer to a goal on the “Accounts” tab')}}
+  return {state:'run'};
+}
+function chStart(ids){
+  const g=G(), T=todayStr(), end=ymd(new Date(Date.now()+DAY)), tpls=chTemplates();
+  g.active=ids.map(id=>{const t=tpls.find(x=>x.id===id);const c={id,em:t.em,t:t.t,xp:t.xp,start:T,end};
+    if(id==='cafe')c.cap=t.cap.total;
+    if(id==='less'){const a=ymd(new Date(Date.now()-2*DAY)),b=ymd(new Date(Date.now()-DAY));c.base=sum(S.expenses.filter(e=>!e.debtId&&!isFixed(e.cat)&&e.date>=a&&e.date<=b))}
+    return c});
+  g.offer=null; save();
+}
+// закрываем челленджи, которые выиграны или закончились: за победу — опыт
+function chSettle(){
+  const g=G(); let won=0,xp=0;
+  for(const c of g.active){if(c.done)continue;const r=chEval(c);
+    if(r.state==='win'){c.done='win';won++;xp+=c.xp}else if(r.state==='fail'&&todayStr()>c.end)c.done='fail'}
+  if(won){haptic('win');addXP(xp,tr(`🏆 Челленджей выиграно: ${won} · +${xp} опыта`,`🏆 Challenges won: ${won} · +${xp} XP`));confettiAt($('#fab'))}
+  g.active=g.active.filter(c=>!(c.done&&todayStr()>c.end)||!c.done);
+  if(g.active.every(c=>todayStr()>c.end))g.active=[];
+  save(); return won;
+}
+/* ---------- свинка-тамагочи ---------- */
+function pigState(){
+  const g=G(), savedNow=goals().reduce((s,x)=>s+accBalance(x),0), P=isCurMonth(ui.month)?period():null;
+  const k=rk(1000), scale=savedNow<k?0.8:savedNow<10*k?0.95:savedNow<50*k?1.1:1.25;
+  const sad=P&&(P.free<0||P.todayLeft<0), happy=!sad&&(g.streak>=2||(P&&P.todayLeft>=0));
+  const lines=sad?[tr('Хрю… давай завтра полегче 🥺','Oink… let’s go easy tomorrow 🥺')]
+    :happy?[tr('Хрю! Я расту 💪','Oink! I’m growing 💪'),tr('Хрю-хрю, так держать! ✨','Oink-oink, keep it up! ✨'),tr('Погладь меня 🐽','Pet me 🐽')]
+    :[tr('Хрю. Покорми меня копилкой 🍎','Oink. Feed me some savings 🍎')];
+  return {scale,mood:sad?'sad':happy?'happy':'calm',line:lines[Math.floor(Date.now()/36e5)%lines.length],saved:savedNow};
+}
+function gameCard(){
+  const g=G(), L=lvlInfo(g.xp), pig=pigState(), T=todayStr(), offer=chOffer();
+  const act=g.active.filter(c=>c.end>=T||c.done);
+  return `<div class="card" id="gameCard"><div class="game">
+    <div class="pig ${pig.mood}" id="pig" style="--s:${pig.scale}" role="button" aria-label="${tr('Погладить свинку','Pet the piggy')}"><span class="b">🐷</span><span class="mood">${pig.mood==='sad'?'💧':pig.mood==='happy'?'💕':'💤'}</span></div>
+    <div><div class="lvl">${tr('Уровень','Level')} ${L.n} · <b>${esc(L.name)}</b></div>
+      <div class="xpbar"><i style="width:${Math.max(3,L.cur/L.need*100)}%"></i></div>
+      <div class="streak"><span>⭐ ${L.cur}/${L.need} ${tr('опыта','XP')}</span><span>🔥 <b>${g.streak}</b> ${EN?pe(g.streak,'day','days'):plural(g.streak,['день','дня','дней'])} ${tr('подряд','in a row')}</span>
+        <span>${g.freezeWeek===isoWeek(new Date())?tr('❄️ заморозка потрачена','❄️ freeze used'):tr('❄️ заморозка есть','❄️ freeze ready')}</span></div>
+      <div class="small muted" style="margin-top:4px">${esc(pig.line)}</div></div></div>
+    <div class="chl">${act.length?act.map(c=>{const r=c.done?{state:c.done}:chEval(c);
+      return `<div class="chrow"><span class="ce">${c.em}</span><span class="ct">${esc(c.t)}<div class="cs">${r.state==='win'?tr('✅ выполнено','✅ done'):r.state==='fail'?tr('❌ ','❌ ')+(r.note||tr('не вышло','failed')):`${tr('до','until')} ${fmtDs(c.end)} · ${r.note||''}`}</div></span><span class="cx">+${c.xp}</span></div>`}).join('')
+      :offer?`<button class="btn primary block" data-act="chPick">🎯 ${tr('Выбрать 3 челленджа на 2 дня','Pick 3 challenges for 2 days')}</button>`:''}</div></div>`;
+}
+function openChPick(){
+  const ids=chOffer()||[], tpls=chTemplates(); ui.chSel=new Set();
+  $('#chList').innerHTML=ids.map(id=>{const c=tpls.find(x=>x.id===id);return c?`<button data-ch="${id}"><span class="ce">${c.em}</span><span class="ct">${esc(c.t)}</span><span class="cx">+${c.xp}</span></button>`:''}).join('');
+  $('#chGo').disabled=true; $('#chGo').textContent=tr('Выбери 3','Pick 3'); openPanel('#chsheet');
+}
+function petPig(){
+  const el=$('#pig'); if(!el)return; haptic('pet'); el.classList.remove('oink'); void el.offsetWidth; el.classList.add('oink');
+  for(let i=0;i<3;i++){const h=document.createElement('span');h.className='pop';h.textContent=['💕','✨','🐽'][i];h.style.setProperty('--dx',(i-1)*24+'px');el.appendChild(h);setTimeout(()=>h.remove(),1000)}
+  const g=G(); if(g.petDay!==todayStr()){g.petDay=todayStr();addXP(2)}
+}
+function xpForSave(){const g=G();if(g.saveXpDay===todayStr())return 0;g.saveXpDay=todayStr();addXP(10);return 10}
+/* ---------- хочу-лист: 48 часов подумать ---------- */
+function wishCard(){
+  const g=G(), list=g.wish.filter(w=>!w.done), now=Date.now();
+  return `<div class="card wish"><h2>${tr('🛒 Хочу-лист','🛒 Wishlist')} <button class="btn ghost small" data-act="wishNew">${tr('+ желание','+ wish')}</button></h2>
+    <div class="small sec" style="margin-bottom:6px">${tr('Хочется что-то купить? Добавь сюда — пусть полежит 48 часов. Потом спрошу, хочешь ли ещё. Купить можно в любой момент.','Want to buy something? Add it here and let it rest for 48 hours. Then I’ll ask if you still want it. You can buy it any time.')}</div>
+    ${g.saved?`<div class="small" style="margin-bottom:6px">🌱 ${tr('Сэкономлено, когда передумал','Saved by changing your mind')}: <b>${money(g.saved)}</b></div>`:''}
+    ${list.map((w,i)=>{const left=Math.max(0,w.ts+48*36e5-now), h=Math.ceil(left/36e5);
+      return `<div class="prow${i===0?' first':''}"><span class="em">🛍️</span><span class="tx"><div class="d1">${esc(w.name)}</div><div class="tm">${left?tr(`отлёживается ещё ${h} ч`,`resting for ${h} more h`):tr('можно решать','time to decide')}</div></span>
+        <span class="am num">${money(w.price)}<br><span style="display:inline-flex;gap:4px;margin-top:4px"><button class="pay-btn" data-wbuy="${w.id}">${tr('Купить','Buy')}</button><button class="btn sm" data-wno="${w.id}" style="padding:6px 8px;font-size:12px">${tr('Передумал','Changed mind')}</button></span></span></div>`}).join('')}
+  </div>`;
+}
+function wishResolve(id,buy){
+  const g=G(), w=g.wish.find(x=>x.id===id); if(!w)return; w.done=buy?'buy':'no'; w.doneTs=Date.now();
+  if(buy){save();closeSheet();setTimeout(()=>{openSheet();$('#fAmount').value=dec(w.price);$('#fDesc').value=w.name;$('#fDesc').dispatchEvent(new Event('input',{bubbles:true}))},300)}
+  else{g.saved=(g.saved||0)+w.price;save();haptic('success');addXP(15);toast(tr(`🌱 Отлично! ${money(w.price)} остались при тебе`,`🌱 Nice! You kept ${money(w.price)}`));render()}
+}
+let wishQ=null;
+function maybeWish(done){ // через 48 часов спокойно спрашиваем
+  const g=G(), w=g.wish.find(x=>!x.done&&Date.now()-x.ts>=48*36e5&&x.askDay!==todayStr()); if(!w)return false;
+  w.askDay=todayStr(); save(); wishQ={id:w.id,done};
+  $('#wqT').textContent=tr(`Всё ещё хочешь «${w.name}»?`,`Still want “${w.name}”?`);
+  $('#wqS').innerHTML=tr(`Прошло 2 дня с тех пор, как ты добавил это за <b>${money(w.price)}</b>. Решать тебе — оба варианта нормальные.`,`It’s been 2 days since you added it for <b>${money(w.price)}</b>. Your call — both options are fine.`);
+  $('#wqBuy').textContent=tr('Да, покупаю','Yes, buying it');$('#wqNo').textContent=tr('Передумал 🌱','Changed my mind 🌱');$('#wqLater').textContent=tr('Подумаю ещё денёк','Let me think one more day');
+  openPanel('#wqsheet'); return true;
+}
 /* ---------- что нового ---------- */
 // items — по-русски, en — то же по-английски
 const CHANGELOG=[
+  {v:'1.13.0',items:['🎨 Новые темы: «Неон» и «Y2K» (⚙️ → Профиль)','⭐ Уровни и опыт: за записанные траты, дни в норме и челленджи','🔥 Серия дней в норме — и раз в неделю «заморозка», если сорвался','🎯 Челленджи: каждые 2 дня выбираешь 3 из 6 — подобраны под твои траты','🐷 Свинка-тамагочи на главной: растёт от копилки, радуется серии — её можно погладить','🛒 Хочу-лист: желание отлёживается 48 часов, потом спрошу, хочешь ли ещё','😍 Настроение покупки: отмечай «кайф / норм / зря» — в итогах месяца покажу лучшие покупки','🌯 Для крупных трат — сколько это в шавермах или капучино','📳 Разная вибрация: новый уровень, победа в челлендже, поглаживание свинки'],
+    en:['🎨 New themes: “Neon” and “Y2K” (⚙️ → Profile)','⭐ Levels and XP: for logging expenses, days within the norm and challenges','🔥 A streak of days within the norm — plus a weekly “freeze” if you slip','🎯 Challenges: every 2 days pick 3 of 6 — tailored to your spending','🐷 A tamagotchi piggy on the home screen: grows with savings, cheers your streak — you can pet it','🛒 Wishlist: a wish rests for 48 hours, then I ask if you still want it','😍 Purchase mood: mark “love it / okay / regret” — your monthly recap will show the best buys','🌯 For big purchases — how many shawarmas or cappuccinos that is','📳 Distinct vibrations: level up, challenge win, petting the piggy']},
   {v:'1.12.0',items:['💱 Основная валюта: при первом запуске выбираешь свою — все суммы показываются в ней, а траты в другой валюте пересчитываются по курсу ЦБ (⚙️ → Профиль)','🇬🇧 Английский язык: приложение теперь можно переключить на English — в мастере первого запуска или в ⚙️ → Профиль','🏷️ Категории угадываются и по английским словам: coffee, uber, netflix, pharmacy…','📖 «Что нового» показывается один раз — всё остальное всегда доступно в кружке «Обновление»'],
     en:['💱 Main currency: pick yours on first launch — all amounts are shown in it, and expenses in other currencies are converted at the official rate (⚙️ → Profile)','🇬🇧 English: the app now speaks English — choose it in the first-launch setup or in ⚙️ → Profile','🏷️ Categories are now recognized from English words too: coffee, uber, netflix, pharmacy…','📖 “What’s new” is shown once — everything else is always available in the “Update” circle']},
   {v:'1.11.0',items:['🧾 «Заплатил за всех»: раздели счёт с друзьями — кто сколько должен и до какого числа (вкладка «Счета»)','💸 В день возврата напомню проверить перевод от друга — или вернуть долг самому','🧭 Мастер первого запуска больше не прокручивается и не показывает приложение раньше времени'],
@@ -2920,9 +3200,11 @@ function quickOpen(){
 // очередь того, что показываем при открытии: что нового → сюрприз → напоминание о копии
 const startupQ=[]; const nextStartup=()=>{const f=startupQ.shift();if(f)f()};
 function runStartup(){
+  try{const gained=evalDays();chSettle();if(gained&&ui.view==='home')keepScroll(renderHome)}catch(e){}
   startupQ.push(()=>{if(!checkChangelog())nextStartup()});
   startupQ.push(()=>{if(!maybeAskPay(nextStartup))nextStartup()});
   startupQ.push(()=>{if(!maybeRemind(nextStartup))nextStartup()});
+  startupQ.push(()=>{if(!maybeWish(nextStartup))nextStartup()});
   startupQ.push(()=>{if(!maybeRecap(nextStartup))nextStartup()});
   startupQ.push(()=>loveCheck(nextStartup));
   startupQ.push(()=>{if(quickOpen())return;if(backupDue()&&ui.view==='home'&&!document.querySelector('.sheet.on'))openBackupAsk()});
@@ -3018,7 +3300,7 @@ function loadDemo(){
 /* ---------- события ---------- */
 document.addEventListener('click',async ev=>{
   if(ev.target.closest('.recap a.btn'))return; // ссылку открывает браузер
-  const t=ev.target.closest('button,rect.hit,[data-pie],[data-rnav]'); if(!t)return;
+  const t=ev.target.closest('button,rect.hit,[data-pie],[data-rnav],#pig'); if(!t)return;
   if(t.classList.contains('tab')){go(t.dataset.v);return}
   if(t.id==='gear'){go(ui.view==='settings'?'home':'settings');return}
   if(t.dataset.goto){go(t.dataset.goto);return}
@@ -3061,6 +3343,14 @@ document.addEventListener('click',async ev=>{
     keepScroll(renderHome); toast(li&&li.done?tr(`🎉 ${p.name||'Кредит'} полностью выплачен!`,`🎉 ${p.name||'Loan'} fully paid off!`):tr(`✓ ${p.name||cn(cat(p.cat))} оплачен`,`✓ ${p.name||cn(cat(p.cat))} paid`));return}
   if(t.dataset.day){const d=Number(t.dataset.day);ui.selDay=ui.selDay===d?null:d;haptic();keepScroll(renderHome);return}
   if(t.dataset.pin!=null){pinKey(t.dataset.pin);return}
+  if(t.dataset.mood){ui.fMood=ui.fMood===t.dataset.mood?null:t.dataset.mood;haptic();renderMoods();return}
+  if(t.id==='pig'||t.closest?.('#pig')){petPig();return}
+  if(t.dataset.ch){const id=t.dataset.ch;if(ui.chSel.has(id))ui.chSel.delete(id);else if(ui.chSel.size<3)ui.chSel.add(id);else{toast(tr('Можно выбрать только 3','You can pick only 3'));return}
+    t.classList.toggle('on',ui.chSel.has(id));haptic();const n=ui.chSel.size,need=Math.min(3,$('#chList').children.length);
+    $('#chGo').disabled=n<need;$('#chGo').textContent=n<need?tr(`Выбери ещё ${need-n}`,`Pick ${need-n} more`):tr('Принять вызов 💪','Accept the challenge 💪');return}
+  if(t.id==='chGo'){chStart([...ui.chSel]);closeSheet();haptic('success');confettiAt($('#fab'));toast(tr('🎯 Челленджи приняты! 2 дня — погнали','🎯 Challenges accepted! 2 days — go'));render();return}
+  if(t.dataset.wbuy){wishResolve(t.dataset.wbuy,true);return}
+  if(t.dataset.wno){wishResolve(t.dataset.wno,false);return}
   if(t.dataset.spdel!=null){ui.split.friends.splice(+t.dataset.spdel,1);if(!ui.split.friends.length)ui.split.friends.push({name:'',amount:''});renderSplit();return}
   if(t.dataset.recap){openRecap(t.dataset.recap);return}
   if(t.dataset.hl){const k=t.dataset.hl;haptic();
@@ -3090,7 +3380,7 @@ document.addEventListener('click',async ev=>{
   if(t.dataset.subno){S.subDismissed={...(S.subDismissed||{}),[t.dataset.subno]:1};save();haptic();keepScroll(renderTips);return}
   if(t.id==='scanClose'){stopScan();return}
   if(t.id==='scanPhoto'){$('#scanFile').click();return}
-  if(t.dataset.skin){S.skin=t.dataset.skin;applySkin();save();haptic('success');keepScroll(()=>{renderSettings();syncPlanForm()});return}
+  if(t.dataset.skin){S.skin=SKINS.includes(t.dataset.skin)?t.dataset.skin:'calm';applySkin();save();haptic('success');keepScroll(()=>{renderSettings();syncPlanForm()});return}
   if(t.id==='lockFace'){faceUnlock();return}
   if(t.id==='lockAlt'){
     if(document.body.classList.contains('locked')){
@@ -3155,6 +3445,13 @@ document.addEventListener('click',async ev=>{
       S.accounts.push({id:uid(),type:'main',name:tr('Карта','Card'),emoji:'💳',start:v,ts:Date.now(),exclude:false});save();haptic('success');keepScroll(renderHome);toast(tr(`💳 Баланс ${money(v)} записан`,`💳 Balance ${money(v)} saved`));break}
     case 'skipbal':S.balAsked=true;save();keepScroll(renderHome);break;
     case 'transfer':openTransfer();break;
+    case 'chPick':$('#chT').textContent=tr('🎯 Челленджи на 2 дня','🎯 Challenges for 2 days');$('#chS').textContent=tr('Выбери 3 — за каждую победу получишь опыт для уровня. Подобрал под твои траты.','Pick 3 — every win gives XP for your level. Chosen to fit your spending.');openChPick();break;
+    case 'wishNew':$('#wnT').textContent=tr('🛒 Новое желание','🛒 New wish');$('#wName').placeholder=tr('Что хочется? Кроссовки, наушники…','What do you want? Sneakers, headphones…');$('#wSave').textContent=tr('Пусть полежит 48 часов','Let it rest for 48 hours');$('#wName').value='';$('#wPrice').value='';openPanel('#wsheet2');setTimeout(()=>$('#wName').focus(),300);break;
+    case 'wishSave':{const n=$('#wName').value.trim(),pr=parseAmount($('#wPrice').value);if(!n){toast(tr('Что хочется?','What is it?'));return}if(!(pr>0)){toast(tr('Сколько стоит?','How much?'));return}
+      G().wish.push({id:uid(),name:n,price:pr,ts:Date.now()});save();closeSheet();haptic('success');render();toast(tr('🛒 Добавил. Спрошу через 48 часов','🛒 Added. I’ll ask in 48 hours'));break}
+    case 'wqBuy':{const q=wishQ;wishQ=null;wishResolve(q.id,true);break}
+    case 'wqNo':{const q=wishQ;wishQ=null;closeSheet();wishResolve(q.id,false);if(q.done)setTimeout(q.done,400);break}
+    case 'wqLater':{const q=wishQ;wishQ=null;const w=G().wish.find(x=>x.id===q.id);if(w)w.ts=Date.now()-24*36e5;save();closeSheet();toast(tr('Хорошо, спрошу завтра','Okay, I’ll ask tomorrow'));if(q.done)setTimeout(q.done,350);break}
     case 'splitNew':openSplit();break;
     case 'spAdd':ui.split.friends.push({name:'',amount:''});renderSplit();setTimeout(()=>document.querySelector(`[data-spname="${ui.split.friends.length-1}"]`)?.focus(),50);break;
     case 'spSave':saveSplit();break;
